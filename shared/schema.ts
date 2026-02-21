@@ -359,6 +359,15 @@ export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({ id: tru
 export const insertBlogCommentSchema = createInsertSchema(blogComments).omit({ id: true, createdAt: true });
 export const insertAbandonedCartSchema = createInsertSchema(abandonedCarts).omit({ id: true, createdAt: true, updatedAt: true });
 
+export const stockNotifications = pgTable("stock_notifications", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  productId: integer("product_id").notNull(),
+  isNotified: boolean("is_notified").default(false),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+export const insertStockNotificationSchema = createInsertSchema(stockNotifications).omit({ id: true, createdAt: true });
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Category = typeof categories.$inferSelect;
@@ -411,3 +420,5 @@ export type BlogComment = typeof blogComments.$inferSelect;
 export type InsertBlogComment = z.infer<typeof insertBlogCommentSchema>;
 export type AbandonedCart = typeof abandonedCarts.$inferSelect;
 export type InsertAbandonedCart = z.infer<typeof insertAbandonedCartSchema>;
+export type StockNotification = typeof stockNotifications.$inferSelect;
+export type InsertStockNotification = z.infer<typeof insertStockNotificationSchema>;

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, CreditCard, Shield, Truck, Lock, Loader2, UserCheck, Building2, MessageCircle, Copy, Check, ChevronRight } from "lucide-react";
+import { ArrowLeft, CreditCard, Shield, Truck, Lock, Loader2, UserCheck, Building2, MessageCircle, Copy, Check, ChevronRight, Package } from "lucide-react";
 import { formatPrice, getSessionId } from "@/lib/utils";
 import { useCart } from "@/hooks/use-cart";
 import { useAuth } from "@/hooks/use-auth";
@@ -357,7 +357,10 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-wrap gap-4 justify-center">
+          <Button onClick={() => setLocation(`/siparis-takip`)} variant="outline" data-testid="button-track-order">
+            <Package className="w-4 h-4 mr-2" /> Sipariş Takip
+          </Button>
           <Button onClick={() => setLocation("/")} variant="outline" data-testid="button-go-home">Ana Sayfa</Button>
           <Button onClick={() => setLocation("/urunler")} className="neon-glow" data-testid="button-continue-shopping-after">Alışverişe Devam Et</Button>
         </div>

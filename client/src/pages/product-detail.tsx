@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star, ShoppingCart, Heart, Minus, Plus, Truck, Shield, RotateCcw, ChevronRight, Tag, Share2 } from "lucide-react";
+import { Star, ShoppingCart, Heart, Minus, Plus, Truck, Shield, RotateCcw, ChevronRight, Tag, Share2, Bell } from "lucide-react";
 import { SiFacebook, SiX, SiWhatsapp, SiTelegram } from "react-icons/si";
 import { formatPrice, discountPercent } from "@/lib/utils";
 import { useCart } from "@/hooks/use-cart";
@@ -50,6 +50,8 @@ export default function ProductDetailPage() {
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewHoverRating, setReviewHoverRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
+  const [notifyEmail, setNotifyEmail] = useState("");
+  const [notifySubmitted, setNotifySubmitted] = useState(false);
 
   const reviewMutation = useMutation({
     mutationFn: async () => {
@@ -268,6 +270,48 @@ export default function ProductDetailPage() {
               <Heart className={`w-5 h-5 ${isFavorite(product.id) ? "fill-red-500 text-red-500" : ""}`} />
             </Button>
           </div>
+
+          {displayStock !== null && displayStock !== undefined && displayStock <= 0 && !notifySubmitted && (
+            <div className="mt-4 p-4 bg-muted rounded-xl border border-border" data-testid="stock-notify-section">
+              <div className="flex items-center gap-2 mb-2">
+                <Bell className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold">Stoğa Gelince Haber Ver</span>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">Bu ürün tekrar stoğa girdiğinde size e-posta ile bildirim göndeririz.</p>
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  placeholder="E-posta adresiniz"
+                  value={notifyEmail}
+                  onChange={(e) => setNotifyEmail(e.target.value)}
+                  className="flex-1"
+                  data-testid="input-stock-notify-email"
+                />
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    if (!notifyEmail || !product) return;
+                    try {
+                      await apiRequest("POST", "/api/stock-notify", { email: notifyEmail, productId: product.id });
+                      setNotifySubmitted(true);
+                      toast({ title: "Kaydedildi!", description: "Ürün stoğa girince bildirim alacaksınız." });
+                    } catch {
+                      toast({ title: "Hata", variant: "destructive" });
+                    }
+                  }}
+                  data-testid="button-stock-notify-submit"
+                >
+                  Bildir
+                </Button>
+              </div>
+            </div>
+          )}
+          {notifySubmitted && displayStock !== null && displayStock !== undefined && displayStock <= 0 && (
+            <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-lg text-sm text-primary flex items-center gap-2" data-testid="text-stock-notify-success">
+              <Bell className="w-4 h-4" />
+              Bildirim kaydınız alındı. Ürün stoğa girince size haber vereceğiz.
+            </div>
+          )}
 
           <div className="grid grid-cols-3 gap-4 mt-8">
             {[

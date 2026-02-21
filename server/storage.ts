@@ -25,7 +25,8 @@ import {
   type BlogComment, type InsertBlogComment,
   type Campaign, type InsertCampaign,
   type AbandonedCart, type InsertAbandonedCart,
-  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, bundles, testimonials, paymentMethods, blogCategories, blogPosts, blogComments, campaigns, abandonedCarts,
+  type StockNotification, type InsertStockNotification,
+  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, bundles, testimonials, paymentMethods, blogCategories, blogPosts, blogComments, campaigns, abandonedCarts, stockNotifications,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, ilike, desc, asc, gte, lte, sql, count, sum } from "drizzle-orm";
@@ -713,6 +714,22 @@ export class DatabaseStorage {
 
   async getLowStockProducts(threshold = 10): Promise<Product[]> {
     return await db.select().from(products).where(and(eq(products.isActive, true), lte(products.stock, threshold))).orderBy(asc(products.stock));
+  }
+
+  async createStockNotification(data: InsertStockNotification): Promise<StockNotification> {
+    const existing = await db.select().from(stockNotifications).where(and(eq(stockNotifications.email, data.email), eq(stockNotifications.productId, data.productId), eq(stockNotifications.isNotified, false)));
+    if (existing.length > 0) return existing[0];
+    const [created] = await db.insert(stockNotifications).values(data).returning();
+    return created;
+  }
+
+  async updateUserProfile(id: number, data: { fullName?: string; email?: string; phone?: string | null }): Promise<User | undefined> {
+    const [updated] = await db.update(users).set(data).where(eq(users.id, id)).returning();
+    return updated;
+  }
+
+  async updateUserPassword(id: number, hashedPassword: string): Promise<void> {
+    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, id));
   }
 }
 

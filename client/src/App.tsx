@@ -21,6 +21,8 @@ import SupplementWizardPage from "@/pages/supplement-wizard";
 import BlogPage from "@/pages/blog";
 import BlogDetailPage from "@/pages/blog-detail";
 import ComparePage from "@/pages/compare";
+import AccountPage from "@/pages/account";
+import OrderTrackingPage from "@/pages/order-tracking";
 import SeoHead from "@/components/seo-head";
 import NotFound from "@/pages/not-found";
 
@@ -44,6 +46,8 @@ function Router() {
         <Route path="/supplement-sihirbazi" component={SupplementWizardPage} />
         <Route path="/blog" component={BlogPage} />
         <Route path="/blog/:slug" component={BlogDetailPage} />
+        <Route path="/hesabim" component={AccountPage} />
+        <Route path="/siparis-takip" component={OrderTrackingPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

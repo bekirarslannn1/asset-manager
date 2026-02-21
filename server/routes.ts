@@ -148,6 +148,44 @@ export async function registerRoutes(
     res.json({ id: user.id, username: user.username, email: user.email, fullName: user.fullName, role: user.role, avatar: user.avatar });
   });
 
+  app.get("/api/auth/orders", requireAuth, async (req, res) => {
+    const orders = await storage.getOrdersByUser((req as any).user.id);
+    res.json(orders);
+  });
+
+  app.patch("/api/auth/profile", requireAuth, async (req, res) => {
+    try {
+      const { fullName, email, phone } = req.body;
+      if (!fullName || !email) return res.status(400).json({ error: "Ad ve e-posta zorunludur" });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "Geçersiz e-posta adresi" });
+      const userId = (req as any).user.id;
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail && existingEmail.id !== userId) return res.status(400).json({ error: "Bu e-posta başka bir hesapta kullanılıyor" });
+      const user = await storage.updateUserProfile(userId, { fullName, email, phone: phone || null });
+      if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+      res.json({ id: user.id, username: user.username, email: user.email, fullName: user.fullName, role: user.role, avatar: user.avatar });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.patch("/api/auth/password", requireAuth, async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) return res.status(400).json({ error: "Şifre alanları zorunludur" });
+      if (newPassword.length < 6) return res.status(400).json({ error: "Yeni şifre en az 6 karakter olmalıdır" });
+      const user = await storage.getUser((req as any).user.id);
+      if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+      const valid = await bcrypt.compare(currentPassword, user.password);
+      if (!valid) return res.status(400).json({ error: "Mevcut şifre hatalı" });
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await storage.updateUserPassword(user.id, hashed);
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.get("/api/categories", async (req, res) => {
     res.json(await storage.getCategories());
   });
@@ -302,6 +340,20 @@ export async function registerRoutes(
   app.post("/api/abandoned-cart", async (req, res) => {
     const cart = await storage.saveAbandonedCart(req.body);
     res.status(201).json(cart);
+  });
+
+  app.post("/api/stock-notify", async (req, res) => {
+    try {
+      const { email, productId } = req.body;
+      if (!email || !productId) return res.status(400).json({ error: "E-posta ve ürün gerekli" });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "Geçersiz e-posta adresi" });
+      const product = await storage.getProductById(Number(productId));
+      if (!product) return res.status(404).json({ error: "Ürün bulunamadı" });
+      const notification = await storage.createStockNotification({ email, productId: Number(productId) });
+      res.status(201).json(notification);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.get("/api/pages", async (req, res) => {
@@ -1275,6 +1327,45 @@ export async function registerRoutes(
 </products>`;
     res.set("Content-Type", "application/xml; charset=utf-8");
     res.send(xml);
+  });
+
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      const allProducts = await storage.getProducts({});
+      const cats = await storage.getCategories();
+      const blogPostsList = await storage.getBlogPosts({});
+      const pagesList = await storage.getPages();
+      const settings = await storage.getSettings();
+      const siteUrl = settings.find(s => s.key === "site_url")?.value || "";
+      const base = siteUrl || `https://${_req.get("host")}`;
+
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>${base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>${base}/urunler</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>${base}/markalar</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>${base}/blog</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>${base}/supplement-sihirbazi</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>`;
+
+      for (const cat of cats.filter(c => c.isActive)) {
+        xml += `\n  <url><loc>${escapeXml(`${base}/kategori/${cat.slug}`)}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`;
+      }
+      for (const p of allProducts.filter(pr => pr.isActive)) {
+        xml += `\n  <url><loc>${escapeXml(`${base}/urun/${p.slug}`)}</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`;
+      }
+      for (const post of blogPostsList.filter((bp: any) => bp.status === "published")) {
+        xml += `\n  <url><loc>${escapeXml(`${base}/blog/${post.slug}`)}</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>`;
+      }
+      for (const page of pagesList.filter((pg: any) => pg.isActive)) {
+        xml += `\n  <url><loc>${escapeXml(`${base}/sayfa/${page.slug}`)}</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>`;
+      }
+
+      xml += `\n</urlset>`;
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.send(xml);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.get("/api/blog/categories", async (_req, res) => {

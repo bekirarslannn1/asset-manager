@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Minus, Plus, Trash2, ShoppingCart, Tag, ArrowRight, ArrowLeft, UserCheck } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingCart, Tag, ArrowRight, ArrowLeft, UserCheck, Sparkles } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/hooks/use-cart";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Coupon } from "@shared/schema";
+import ProductCard from "@/components/product-card";
+import type { Coupon, Product } from "@shared/schema";
 
 function GuestCheckoutInfo() {
   const { isLoggedIn } = useAuth();
@@ -225,6 +227,29 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+
+      <CartSuggestions cartProductIds={items.map(i => i.productId)} />
     </div>
+  );
+}
+
+function CartSuggestions({ cartProductIds }: { cartProductIds: number[] }) {
+  const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products/best-sellers"] });
+  const suggestions = products.filter(p => !cartProductIds.includes(p.id)).slice(0, 4);
+
+  if (suggestions.length === 0) return null;
+
+  return (
+    <section className="mt-12" data-testid="cart-suggestions">
+      <div className="flex items-center gap-2 mb-6">
+        <Sparkles className="w-5 h-5 text-primary" />
+        <h2 className="text-xl font-bold font-heading">Bunları da Beğenebilirsiniz</h2>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {suggestions.map(product => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
+    </section>
   );
 }
