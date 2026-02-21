@@ -26,7 +26,10 @@ import {
   type Campaign, type InsertCampaign,
   type AbandonedCart, type InsertAbandonedCart,
   type StockNotification, type InsertStockNotification,
-  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, bundles, testimonials, paymentMethods, blogCategories, blogPosts, blogComments, campaigns, abandonedCarts, stockNotifications,
+  type ProductQuestion, type InsertProductQuestion,
+  type OrderNote, type InsertOrderNote,
+  type UserAddress, type InsertUserAddress,
+  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, bundles, testimonials, paymentMethods, blogCategories, blogPosts, blogComments, campaigns, abandonedCarts, stockNotifications, productQuestions, orderNotes, userAddresses,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, ilike, desc, asc, gte, lte, sql, count, sum } from "drizzle-orm";
@@ -730,6 +733,92 @@ export class DatabaseStorage {
 
   async updateUserPassword(id: number, hashedPassword: string): Promise<void> {
     await db.update(users).set({ password: hashedPassword }).where(eq(users.id, id));
+  }
+
+  async getQuestionsByProduct(productId: number): Promise<ProductQuestion[]> {
+    return await db.select().from(productQuestions).where(and(eq(productQuestions.productId, productId), eq(productQuestions.isApproved, true))).orderBy(desc(productQuestions.createdAt));
+  }
+
+  async getAllQuestions(): Promise<ProductQuestion[]> {
+    return await db.select().from(productQuestions).orderBy(desc(productQuestions.createdAt));
+  }
+
+  async createQuestion(data: InsertProductQuestion): Promise<ProductQuestion> {
+    const [q] = await db.insert(productQuestions).values(data).returning();
+    return q;
+  }
+
+  async answerQuestion(id: number, data: { answer: string; answeredBy: string }): Promise<ProductQuestion | undefined> {
+    const [q] = await db.update(productQuestions).set({ ...data, isApproved: true, answeredAt: new Date() }).where(eq(productQuestions.id, id)).returning();
+    return q;
+  }
+
+  async deleteQuestion(id: number): Promise<void> {
+    await db.delete(productQuestions).where(eq(productQuestions.id, id));
+  }
+
+  async getOrderNotes(orderId: number): Promise<OrderNote[]> {
+    return await db.select().from(orderNotes).where(eq(orderNotes.orderId, orderId)).orderBy(desc(orderNotes.createdAt));
+  }
+
+  async createOrderNote(data: InsertOrderNote): Promise<OrderNote> {
+    const [note] = await db.insert(orderNotes).values(data).returning();
+    return note;
+  }
+
+  async deleteOrderNote(id: number): Promise<void> {
+    await db.delete(orderNotes).where(eq(orderNotes.id, id));
+  }
+
+  async getUserAddresses(userId: number): Promise<UserAddress[]> {
+    return await db.select().from(userAddresses).where(eq(userAddresses.userId, userId)).orderBy(desc(userAddresses.isDefault), desc(userAddresses.createdAt));
+  }
+
+  async createUserAddress(data: InsertUserAddress): Promise<UserAddress> {
+    if (data.isDefault) {
+      await db.update(userAddresses).set({ isDefault: false }).where(eq(userAddresses.userId, data.userId));
+    }
+    const [addr] = await db.insert(userAddresses).values(data).returning();
+    return addr;
+  }
+
+  async updateUserAddress(id: number, userId: number, data: Partial<InsertUserAddress>): Promise<UserAddress | undefined> {
+    if (data.isDefault) {
+      await db.update(userAddresses).set({ isDefault: false }).where(eq(userAddresses.userId, userId));
+    }
+    const [addr] = await db.update(userAddresses).set(data).where(and(eq(userAddresses.id, id), eq(userAddresses.userId, userId))).returning();
+    return addr;
+  }
+
+  async deleteUserAddress(id: number, userId: number): Promise<void> {
+    await db.delete(userAddresses).where(and(eq(userAddresses.id, id), eq(userAddresses.userId, userId)));
+  }
+
+  async getStockNotifications(): Promise<StockNotification[]> {
+    return await db.select().from(stockNotifications).orderBy(desc(stockNotifications.createdAt));
+  }
+
+  async updateReviewReply(id: number, reply: string): Promise<Review | undefined> {
+    const [r] = await db.update(reviews).set({ adminReply: reply }).where(eq(reviews.id, id)).returning();
+    return r;
+  }
+
+  async approveReview(id: number): Promise<Review | undefined> {
+    const [r] = await db.update(reviews).set({ isApproved: true }).where(eq(reviews.id, id)).returning();
+    return r;
+  }
+
+  async rejectReview(id: number): Promise<void> {
+    await db.delete(reviews).where(eq(reviews.id, id));
+  }
+
+  async getAllReviews(): Promise<Review[]> {
+    return await db.select().from(reviews).orderBy(desc(reviews.createdAt));
+  }
+
+  async getReviewRatingDistribution(productId: number): Promise<{rating: number; count: number}[]> {
+    const result = await db.select({ rating: reviews.rating, count: count() }).from(reviews).where(and(eq(reviews.productId, productId), eq(reviews.isApproved, true))).groupBy(reviews.rating);
+    return result.map(r => ({ rating: r.rating, count: Number(r.count) }));
   }
 }
 

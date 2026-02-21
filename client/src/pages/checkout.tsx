@@ -13,7 +13,7 @@ import { useCart } from "@/hooks/use-cart";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { PaymentMethod } from "@shared/schema";
+import type { PaymentMethod, UserAddress } from "@shared/schema";
 
 const TURKISH_CITIES = [
   "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Aksaray", "Amasya", "Ankara", "Antalya",
@@ -58,6 +58,10 @@ export default function CheckoutPage() {
   const [orderResult, setOrderResult] = useState<{ orderNumber: string; paymentMethod: string } | null>(null);
 
   const { data: paymentMethods = [] } = useQuery<PaymentMethod[]>({ queryKey: ["/api/payment-methods"] });
+  const { data: savedAddresses = [] } = useQuery<UserAddress[]>({
+    queryKey: ["/api/addresses"],
+    enabled: isLoggedIn,
+  });
 
   const bankMethods = paymentMethods.filter(m => m.type === "bank_transfer");
   const whatsappMethods = paymentMethods.filter(m => m.type === "whatsapp");
@@ -72,6 +76,23 @@ export default function CheckoutPage() {
       setAddress((prev) => ({ ...prev, fullName: user.fullName || "", email: user.email || "" }));
     }
   }, [user]);
+
+  useEffect(() => {
+    if (savedAddresses.length > 0 && !address.address) {
+      const defaultAddr = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
+      if (defaultAddr) {
+        setAddress(prev => ({
+          ...prev,
+          fullName: defaultAddr.fullName || prev.fullName,
+          phone: defaultAddr.phone || prev.phone,
+          address: defaultAddr.address,
+          city: defaultAddr.city,
+          district: defaultAddr.district || "",
+          zipCode: defaultAddr.postalCode || "",
+        }));
+      }
+    }
+  }, [savedAddresses]);
 
   const [cardInfo, setCardInfo] = useState({
     cardHolderName: "", cardNumber: "", expireMonth: "", expireYear: "", cvc: "",
@@ -400,6 +421,42 @@ export default function CheckoutPage() {
                   <div className="text-xs text-muted-foreground leading-relaxed">
                     <span className="font-medium text-foreground">Misafir olarak sipariş veriyorsunuz.</span>{" "}
                     Sipariş takibi için e-posta adresinize bilgilendirme gönderilecektir.
+                  </div>
+                </div>
+              )}
+
+              {isLoggedIn && savedAddresses.length > 0 && (
+                <div className="space-y-2" data-testid="saved-addresses-section">
+                  <Label className="text-sm font-medium">Kayıtlı Adreslerden Seç</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {savedAddresses.map((addr) => (
+                      <button
+                        key={addr.id}
+                        type="button"
+                        className="text-left p-3 rounded-lg border border-border hover:border-primary/50 transition-colors bg-muted/30"
+                        onClick={() => setAddress({
+                          fullName: addr.fullName,
+                          email: user?.email || address.email,
+                          phone: addr.phone || "",
+                          address: addr.address,
+                          city: addr.city,
+                          district: addr.district || "",
+                          zipCode: addr.postalCode || "",
+                          identityNumber: address.identityNumber,
+                        })}
+                        data-testid={`button-select-address-${addr.id}`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium">{addr.title}</span>
+                          {addr.isDefault && <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded">Varsayılan</span>}
+                        </div>
+                        <p className="text-xs text-muted-foreground">{addr.fullName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{addr.address}, {addr.district}/{addr.city}</p>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border-t border-border pt-3 mt-3">
+                    <p className="text-xs text-muted-foreground">veya aşağıdan yeni adres girin</p>
                   </div>
                 </div>
               )}

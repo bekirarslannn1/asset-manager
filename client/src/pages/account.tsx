@@ -27,7 +27,12 @@ import {
   EyeOff,
   Save,
   Loader2,
+  Plus,
+  Trash2,
+  Star,
+  MapPinned,
 } from "lucide-react";
+import type { UserAddress } from "@shared/schema";
 
 interface OrderItem {
   name: string;
@@ -482,6 +487,184 @@ function PasswordTab() {
   );
 }
 
+function AddressesTab() {
+  const { toast } = useToast();
+  const { data: addresses = [], isLoading } = useQuery<UserAddress[]>({ queryKey: ["/api/addresses"] });
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [form, setForm] = useState({ title: "", fullName: "", phone: "", city: "", district: "", neighborhood: "", address: "", postalCode: "", isDefault: false });
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      if (editId) {
+        return apiRequest("PATCH", `/api/addresses/${editId}`, form);
+      }
+      return apiRequest("POST", "/api/addresses", form);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/addresses"] });
+      toast({ title: editId ? "Adres güncellendi" : "Adres eklendi" });
+      setShowForm(false);
+      setEditId(null);
+      setForm({ title: "", fullName: "", phone: "", city: "", district: "", neighborhood: "", address: "", postalCode: "", isDefault: false });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Hata", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/addresses/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/addresses"] });
+      toast({ title: "Adres silindi" });
+    },
+  });
+
+  const setDefaultMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/addresses/${id}`, { isDefault: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/addresses"] });
+      toast({ title: "Varsayılan adres güncellendi" });
+    },
+  });
+
+  const startEdit = (addr: UserAddress) => {
+    setEditId(addr.id);
+    setForm({
+      title: addr.title,
+      fullName: addr.fullName,
+      phone: addr.phone || "",
+      city: addr.city,
+      district: addr.district || "",
+      neighborhood: addr.neighborhood || "",
+      address: addr.address,
+      postalCode: addr.postalCode || "",
+      isDefault: addr.isDefault || false,
+    });
+    setShowForm(true);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <MapPinned className="h-5 w-5 text-[#39FF14]" />
+          Adreslerim ({addresses.length})
+        </h3>
+        <Button size="sm" onClick={() => { setShowForm(!showForm); setEditId(null); setForm({ title: "", fullName: "", phone: "", city: "", district: "", neighborhood: "", address: "", postalCode: "", isDefault: false }); }} data-testid="button-add-address">
+          <Plus className="w-4 h-4 mr-1" /> Yeni Adres
+        </Button>
+      </div>
+
+      {showForm && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-sm">{editId ? "Adresi Düzenle" : "Yeni Adres Ekle"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(); }} className="space-y-3" data-testid="form-address">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label>Adres Başlığı *</Label>
+                  <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Ev, İş, vb." required data-testid="input-address-title" />
+                </div>
+                <div>
+                  <Label>Ad Soyad *</Label>
+                  <Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="Teslimat alıcısı" required data-testid="input-address-fullname" />
+                </div>
+                <div>
+                  <Label>Telefon</Label>
+                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="05XX XXX XX XX" data-testid="input-address-phone" />
+                </div>
+                <div>
+                  <Label>İl *</Label>
+                  <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="İstanbul" required data-testid="input-address-city" />
+                </div>
+                <div>
+                  <Label>İlçe</Label>
+                  <Input value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} placeholder="Kadıköy" data-testid="input-address-district" />
+                </div>
+                <div>
+                  <Label>Mahalle</Label>
+                  <Input value={form.neighborhood} onChange={(e) => setForm({ ...form, neighborhood: e.target.value })} placeholder="Mahalle adı" data-testid="input-address-neighborhood" />
+                </div>
+              </div>
+              <div>
+                <Label>Açık Adres *</Label>
+                <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Sokak, bina no, daire" required data-testid="input-address-detail" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label>Posta Kodu</Label>
+                  <Input value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value })} placeholder="34000" data-testid="input-address-postalcode" />
+                </div>
+                <div className="flex items-center gap-2 pt-6">
+                  <input type="checkbox" checked={form.isDefault} onChange={(e) => setForm({ ...form, isDefault: e.target.checked })} id="isDefault" className="rounded" data-testid="checkbox-address-default" />
+                  <Label htmlFor="isDefault" className="text-sm cursor-pointer">Varsayılan adres olarak ayarla</Label>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={createMutation.isPending} data-testid="button-save-address">
+                  {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                  {editId ? "Güncelle" : "Kaydet"}
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => { setShowForm(false); setEditId(null); }}>İptal</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <div className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" /></div>
+      ) : addresses.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            <MapPinned className="w-12 h-12 mx-auto mb-3 text-muted" />
+            <p>Henüz kayıtlı adresiniz yok.</p>
+            <p className="text-sm">Teslimat için bir adres ekleyin.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {addresses.map((addr) => (
+            <Card key={addr.id} className={addr.isDefault ? "border-primary/50" : ""} data-testid={`address-card-${addr.id}`}>
+              <CardContent className="py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium">{addr.title}</span>
+                      {addr.isDefault && <Badge className="bg-primary/20 text-primary text-[10px]">Varsayılan</Badge>}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{addr.fullName}</p>
+                    <p className="text-sm text-muted-foreground">{addr.address}</p>
+                    <p className="text-sm text-muted-foreground">{[addr.neighborhood, addr.district, addr.city].filter(Boolean).join(", ")} {addr.postalCode || ""}</p>
+                    {addr.phone && <p className="text-sm text-muted-foreground">{addr.phone}</p>}
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    {!addr.isDefault && (
+                      <Button variant="ghost" size="sm" onClick={() => setDefaultMutation.mutate(addr.id)} data-testid={`button-set-default-${addr.id}`}>
+                        <Star className="w-4 h-4 text-yellow-400" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={() => startEdit(addr)} data-testid={`button-edit-address-${addr.id}`}>
+                      <Save className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate(addr.id)} data-testid={`button-delete-address-${addr.id}`}>
+                      <Trash2 className="w-4 h-4 text-red-400" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AccountPage() {
   const { user, isLoading, isLoggedIn } = useAuth();
   const [, setLocation] = useLocation();
@@ -523,11 +706,16 @@ export default function AccountPage() {
       </div>
 
       <Tabs defaultValue="orders" className="w-full">
-        <TabsList className="w-full grid grid-cols-3 mb-6" data-testid="tabs-account">
+        <TabsList className="w-full grid grid-cols-4 mb-6" data-testid="tabs-account">
           <TabsTrigger value="orders" className="gap-2" data-testid="tab-orders">
             <Package className="h-4 w-4" />
             <span className="hidden sm:inline">Siparişlerim</span>
             <span className="sm:hidden">Siparişler</span>
+          </TabsTrigger>
+          <TabsTrigger value="addresses" className="gap-2" data-testid="tab-addresses">
+            <MapPinned className="h-4 w-4" />
+            <span className="hidden sm:inline">Adreslerim</span>
+            <span className="sm:hidden">Adresler</span>
           </TabsTrigger>
           <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
             <User className="h-4 w-4" />
@@ -543,6 +731,9 @@ export default function AccountPage() {
 
         <TabsContent value="orders">
           <OrdersTab />
+        </TabsContent>
+        <TabsContent value="addresses">
+          <AddressesTab />
         </TabsContent>
         <TabsContent value="profile">
           <ProfileTab />

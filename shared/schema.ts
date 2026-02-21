@@ -92,6 +92,7 @@ export const reviews = pgTable("reviews", {
   rating: integer("rating").notNull(),
   comment: text("comment"),
   isApproved: boolean("is_approved").default(false),
+  adminReply: text("admin_reply"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
@@ -422,3 +423,50 @@ export type AbandonedCart = typeof abandonedCarts.$inferSelect;
 export type InsertAbandonedCart = z.infer<typeof insertAbandonedCartSchema>;
 export type StockNotification = typeof stockNotifications.$inferSelect;
 export type InsertStockNotification = z.infer<typeof insertStockNotificationSchema>;
+
+export const productQuestions = pgTable("product_questions", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").notNull(),
+  userName: text("user_name").notNull(),
+  email: text("email"),
+  question: text("question").notNull(),
+  answer: text("answer"),
+  answeredBy: text("answered_by"),
+  isApproved: boolean("is_approved").default(false),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  answeredAt: timestamp("answered_at"),
+});
+export const insertProductQuestionSchema = createInsertSchema(productQuestions).omit({ id: true, createdAt: true, answeredAt: true });
+export type ProductQuestion = typeof productQuestions.$inferSelect;
+export type InsertProductQuestion = z.infer<typeof insertProductQuestionSchema>;
+
+export const orderNotes = pgTable("order_notes", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").notNull(),
+  userId: integer("user_id"),
+  userName: text("user_name").notNull(),
+  note: text("note").notNull(),
+  isInternal: boolean("is_internal").default(true),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+export const insertOrderNoteSchema = createInsertSchema(orderNotes).omit({ id: true, createdAt: true });
+export type OrderNote = typeof orderNotes.$inferSelect;
+export type InsertOrderNote = z.infer<typeof insertOrderNoteSchema>;
+
+export const userAddresses = pgTable("user_addresses", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  title: text("title").notNull(),
+  fullName: text("full_name").notNull(),
+  phone: text("phone"),
+  city: text("city").notNull(),
+  district: text("district"),
+  neighborhood: text("neighborhood"),
+  address: text("address").notNull(),
+  postalCode: text("postal_code"),
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+export const insertUserAddressSchema = createInsertSchema(userAddresses).omit({ id: true, createdAt: true });
+export type UserAddress = typeof userAddresses.$inferSelect;
+export type InsertUserAddress = z.infer<typeof insertUserAddressSchema>;

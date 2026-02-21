@@ -4,6 +4,15 @@
 A professional, enterprise-grade protein and supplement e-commerce platform for the Turkish market with a dark theme (#0a0a0a, #1a1a1a) and neon green accents (#39FF14). All content is 100% dynamic and manageable through admin panel. Features JWT auth, RBAC, audit logging, KVKK compliance, dynamic theme engine, SDUI page builder, and dynamic navigation.
 
 ## Recent Changes
+- 2026-02-21: Address book - userAddresses table, CRUD API, account "Adreslerim" tab, checkout saved address selection with auto-fill
+- 2026-02-21: Admin order notes - orderNotes table, internal notes system in order detail view
+- 2026-02-21: Admin review moderation - approve/reject/reply with adminReply column, enhanced reviews-tab
+- 2026-02-21: Admin Q&A management - questions-tab, answer/delete, approval workflow
+- 2026-02-21: Admin stock notifications tab - view all stock notification subscribers
+- 2026-02-21: Product Q&A system - productQuestions table, customer question form, admin answering, public display on product detail
+- 2026-02-21: Rating distribution chart - 5-star bar chart with percentages on product detail reviews tab
+- 2026-02-21: Product badge system - Son X Adet!, Ücretsiz Kargo, Yeni, Çok Satan, Tükendi badges on cards and detail
+- 2026-02-21: SEO enhancements - robots.txt, BreadcrumbJsonLd, canonical URLs, PageSeo with OG meta, XML sitemap escaping
 - 2026-02-21: Blog/Makale module - blogCategories, blogPosts, blogComments tables, full CRUD, JSON-LD BlogPosting, reading time calc, related posts, comment approval system, admin Blog tab
 - 2026-02-21: Multiple payment methods - credit card (iyzico), bank transfer (havale/EFT), WhatsApp order
 - 2026-02-21: Admin "Ödeme Yöntemleri" tab - manage bank accounts, WhatsApp number/template
@@ -31,14 +40,16 @@ A professional, enterprise-grade protein and supplement e-commerce platform for 
 - **Database**: PostgreSQL via Drizzle ORM
 - **State Management**: TanStack React Query
 
-### Database Schema (23 tables)
+### Database Schema (28 tables)
 - users (with roles: super_admin, admin, seller, support, logistics, customer)
-- categories, brands, products, productVariants, reviews
+- categories, brands, products, productVariants, reviews (with adminReply)
 - cartItems, orders (with customerName/Email/Phone), banners, siteSettings
 - coupons, favorites, newsletters, pages
 - auditLogs, consentRecords, pageLayouts, navigationLinks
 - testimonials, paymentMethods (type: credit_card/bank_transfer/whatsapp)
 - blogCategories, blogPosts (with readingTime, viewCount, tags, SEO slug), blogComments (with approval system)
+- abandonedCarts, stockNotifications, campaigns, bundles
+- productQuestions (Q&A with admin answers), orderNotes (internal notes), userAddresses (address book)
 
 ### Authentication & Authorization
 - JWT tokens with 7-day expiration

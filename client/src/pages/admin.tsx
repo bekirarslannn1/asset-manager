@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BarChart3, Package, Layers, Users, Shield, Settings, Palette, LayoutGrid, FileText,
   Image, ScrollText, Lock, LogOut, Boxes, Loader2, Tag, ShoppingCart, Star, Ticket,
-  Navigation, Mail, MessageSquareQuote, CreditCard, BookOpen, Megaphone,
+  Navigation, Mail, MessageSquareQuote, CreditCard, BookOpen, Megaphone, MessageCircleQuestion, Bell,
 } from "lucide-react";
 import { ROLE_COLORS } from "./admin/shared";
 
@@ -38,6 +38,8 @@ import PaymentMethodsTab from "./admin/payment-methods-tab";
 import BundlesTab from "./admin/bundles-tab";
 import BlogTab from "./admin/blog-tab";
 import CampaignsTab from "./admin/campaigns-tab";
+import QuestionsTab from "./admin/questions-tab";
+import StockNotificationsTab from "./admin/stock-notifications-tab";
 
 function AdminLoginGate({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("admin_token"));
@@ -207,6 +209,8 @@ export default function AdminPage() {
             <TabsTrigger value="bundles" className="gap-1.5" data-testid="tab-bundles"><Boxes className="w-3.5 h-3.5" /> Paketler</TabsTrigger>
             <TabsTrigger value="payment-methods" className="gap-1.5" data-testid="tab-payment-methods"><CreditCard className="w-3.5 h-3.5" /> Ödeme</TabsTrigger>
             <TabsTrigger value="blog" className="gap-1.5" data-testid="tab-blog"><BookOpen className="w-3.5 h-3.5" /> Blog</TabsTrigger>
+            <TabsTrigger value="questions" className="gap-1.5" data-testid="tab-questions"><MessageCircleQuestion className="w-3.5 h-3.5" /> S&C</TabsTrigger>
+            <TabsTrigger value="stock-notifications" className="gap-1.5" data-testid="tab-stock-notifications"><Bell className="w-3.5 h-3.5" /> Stok Bildirim</TabsTrigger>
             <TabsTrigger value="pages" className="gap-1.5" data-testid="tab-pages"><FileText className="w-3.5 h-3.5" /> Sayfalar</TabsTrigger>
             <TabsTrigger value="settings" className="gap-1.5" data-testid="tab-settings"><Settings className="w-3.5 h-3.5" /> Ayarlar</TabsTrigger>
           </TabsList>
@@ -232,6 +236,8 @@ export default function AdminPage() {
           <TabsContent value="bundles"><BundlesTab /></TabsContent>
           <TabsContent value="payment-methods"><PaymentMethodsTab /></TabsContent>
           <TabsContent value="blog"><BlogTab /></TabsContent>
+          <TabsContent value="questions"><QuestionsTab /></TabsContent>
+          <TabsContent value="stock-notifications"><StockNotificationsTab /></TabsContent>
           <TabsContent value="pages"><PagesTab /></TabsContent>
           <TabsContent value="settings"><SettingsTab /></TabsContent>
         </Tabs>

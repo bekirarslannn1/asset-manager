@@ -12,11 +12,12 @@ import { formatPrice, discountPercent } from "@/lib/utils";
 import { useCart } from "@/hooks/use-cart";
 import { useFavorites } from "@/hooks/use-favorites";
 import ProductCard from "@/components/product-card";
-import { ProductJsonLd } from "@/components/seo-head";
-import type { Product, Review, ProductVariant } from "@shared/schema";
+import { ProductJsonLd, BreadcrumbJsonLd, PageSeo } from "@/components/seo-head";
+import type { Product, Review, ProductVariant, ProductQuestion } from "@shared/schema";
 import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { MessageCircleQuestion, Send } from "lucide-react";
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -27,6 +28,14 @@ export default function ProductDetailPage() {
   });
   const { data: variants = [] } = useQuery<ProductVariant[]>({
     queryKey: ["/api/products", product?.id, "variants"],
+    enabled: !!product?.id,
+  });
+  const { data: ratingDist } = useQuery<Record<number, number>>({
+    queryKey: ["/api/products", product?.id, "rating-distribution"],
+    enabled: !!product?.id,
+  });
+  const { data: questions = [] } = useQuery<ProductQuestion[]>({
+    queryKey: ["/api/products", product?.id, "questions"],
     enabled: !!product?.id,
   });
   const { data: featured = [] } = useQuery<Product[]>({ queryKey: ["/api/products/featured"] });
@@ -52,6 +61,29 @@ export default function ProductDetailPage() {
   const [reviewComment, setReviewComment] = useState("");
   const [notifyEmail, setNotifyEmail] = useState("");
   const [notifySubmitted, setNotifySubmitted] = useState(false);
+  const [qaName, setQaName] = useState("");
+  const [qaEmail, setQaEmail] = useState("");
+  const [qaQuestion, setQaQuestion] = useState("");
+
+  const questionMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", `/api/products/${product?.id}/questions`, {
+        userName: qaName,
+        email: qaEmail || undefined,
+        question: qaQuestion,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products", product?.id, "questions"] });
+      toast({ title: "Sorunuz gönderildi", description: "Sorunuz incelendikten sonra yayınlanacaktır." });
+      setQaName("");
+      setQaEmail("");
+      setQaQuestion("");
+    },
+    onError: (err: any) => {
+      toast({ title: "Hata", description: err.message || "Soru gönderilemedi", variant: "destructive" });
+    },
+  });
 
   const reviewMutation = useMutation({
     mutationFn: async () => {
@@ -128,6 +160,17 @@ export default function ProductDetailPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8" data-testid="product-detail-page">
       {slug && <ProductJsonLd slug={slug} />}
+      <BreadcrumbJsonLd items={[
+        { name: "Ana Sayfa", url: window.location.origin + "/" },
+        { name: "Ürünler", url: window.location.origin + "/urunler" },
+        { name: product.name, url: window.location.origin + "/urun/" + slug },
+      ]} />
+      <PageSeo
+        title={`${product.name} | FitSupp`}
+        description={product.shortDescription || product.description || undefined}
+        image={images[0] || undefined}
+        url={window.location.origin + "/urun/" + slug}
+      />
       <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8" data-testid="breadcrumb">
         <Link href="/"><span className="hover:text-primary cursor-pointer">Ana Sayfa</span></Link>
         <ChevronRight className="w-3.5 h-3.5" />
@@ -164,10 +207,19 @@ export default function ProductDetailPage() {
         </div>
 
         <div>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             {discount > 0 && <Badge className="bg-red-500 text-white">%{discount} İndirim</Badge>}
             {product.isNewArrival && <Badge className="bg-blue-500 text-white">Yeni</Badge>}
             {product.isBestSeller && <Badge className="bg-primary text-primary-foreground">Çok Satan</Badge>}
+            {displayStock !== null && displayStock !== undefined && displayStock > 0 && displayStock <= 5 && (
+              <Badge className="bg-orange-500 text-white animate-pulse" data-testid="badge-low-stock">Son {displayStock} Adet!</Badge>
+            )}
+            {displayStock !== null && displayStock !== undefined && displayStock <= 0 && (
+              <Badge className="bg-gray-500 text-white" data-testid="badge-out-of-stock">Tükendi</Badge>
+            )}
+            {parseFloat(displayPrice) >= 500 && (
+              <Badge className="bg-emerald-500 text-white" data-testid="badge-free-shipping">Ücretsiz Kargo</Badge>
+            )}
           </div>
 
           <h1 className="text-2xl lg:text-3xl font-bold font-heading" data-testid="text-product-title">{product.name}</h1>
@@ -383,6 +435,7 @@ export default function ProductDetailPage() {
           {nutrition && <TabsTrigger value="nutrition">Besin Değerleri</TabsTrigger>}
           {product.usageInstructions && <TabsTrigger value="usage">Kullanım</TabsTrigger>}
           <TabsTrigger value="reviews">Yorumlar ({reviews.length})</TabsTrigger>
+          <TabsTrigger value="qa">Soru & Cevap ({questions.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="description" className="mt-6">
@@ -414,6 +467,40 @@ export default function ProductDetailPage() {
         )}
 
         <TabsContent value="reviews" className="mt-6">
+          {ratingDist && reviews.length > 0 && (
+            <div className="bg-card border border-border rounded-xl p-6 mb-6" data-testid="rating-distribution">
+              <h3 className="font-bold text-lg mb-4">Puan Dağılımı</h3>
+              <div className="flex items-center gap-6">
+                <div className="text-center">
+                  <div className="text-4xl font-bold text-primary">{product.rating || "0"}</div>
+                  <div className="flex gap-0.5 justify-center mt-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} className={`w-4 h-4 ${i < Math.round(parseFloat(product.rating || "0")) ? "fill-yellow-400 text-yellow-400" : "text-muted"}`} />
+                    ))}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">{reviews.length} değerlendirme</div>
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  {[5, 4, 3, 2, 1].map((star) => {
+                    const starCount = ratingDist[star] || 0;
+                    const total = Object.values(ratingDist).reduce((a, b) => a + b, 0);
+                    const pct = total > 0 ? (starCount / total) * 100 : 0;
+                    return (
+                      <div key={star} className="flex items-center gap-2 text-sm">
+                        <span className="w-3 text-right text-muted-foreground">{star}</span>
+                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                        <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-yellow-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="w-6 text-right text-xs text-muted-foreground">{starCount}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
           {reviews.length === 0 ? (
             <p className="text-muted-foreground">Henüz yorum yapılmamış.</p>
           ) : (
@@ -429,6 +516,12 @@ export default function ProductDetailPage() {
                     </div>
                   </div>
                   {review.comment && <p className="text-sm text-muted-foreground">{review.comment}</p>}
+                  {review.adminReply && (
+                    <div className="mt-3 ml-4 pl-3 border-l-2 border-primary/50">
+                      <span className="text-xs font-medium text-primary">Mağaza Yanıtı:</span>
+                      <p className="text-sm text-muted-foreground mt-0.5">{review.adminReply}</p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -498,6 +591,67 @@ export default function ProductDetailPage() {
             </form>
           </div>
         </TabsContent>
+
+        <TabsContent value="qa" className="mt-6">
+          {questions.length > 0 && (
+            <div className="space-y-4 mb-8">
+              {questions.map((q) => (
+                <div key={q.id} className="bg-card border border-border rounded-xl p-4" data-testid={`qa-${q.id}`}>
+                  <div className="flex items-start gap-3">
+                    <MessageCircleQuestion className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-sm">{q.userName}</span>
+                        <span className="text-xs text-muted-foreground">{q.createdAt ? new Date(q.createdAt).toLocaleDateString("tr-TR") : ""}</span>
+                      </div>
+                      <p className="text-sm">{q.question}</p>
+                      {q.answer && (
+                        <div className="mt-3 ml-2 pl-3 border-l-2 border-primary/50">
+                          <span className="text-xs font-medium text-primary">Mağaza Cevabı:</span>
+                          <p className="text-sm text-muted-foreground mt-0.5">{q.answer}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {questions.length === 0 && (
+            <p className="text-muted-foreground mb-6">Henüz soru sorulmamış. İlk soran siz olun!</p>
+          )}
+
+          <div className="bg-card border border-border rounded-xl p-6" data-testid="qa-form">
+            <h3 className="font-bold text-lg mb-4">Soru Sor</h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!qaName.trim() || !qaQuestion.trim() || qaQuestion.length < 10) return;
+                questionMutation.mutate();
+              }}
+              className="space-y-4"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium block mb-1.5">Ad Soyad *</label>
+                  <Input value={qaName} onChange={(e) => setQaName(e.target.value)} placeholder="Adınızı girin" required data-testid="input-qa-name" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium block mb-1.5">E-posta (opsiyonel)</label>
+                  <Input value={qaEmail} onChange={(e) => setQaEmail(e.target.value)} placeholder="Cevap bildirimim için" type="email" data-testid="input-qa-email" />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Sorunuz * (en az 10 karakter)</label>
+                <Textarea value={qaQuestion} onChange={(e) => setQaQuestion(e.target.value)} placeholder="Ürün hakkında sorunuzu yazın..." rows={3} required data-testid="input-qa-question" />
+              </div>
+              <Button type="submit" disabled={questionMutation.isPending || !qaName.trim() || qaQuestion.length < 10} data-testid="button-submit-question">
+                <Send className="w-4 h-4 mr-2" />
+                {questionMutation.isPending ? "Gönderiliyor..." : "Soru Gönder"}
+              </Button>
+            </form>
+          </div>
+        </TabsContent>
       </Tabs>
 
       {(() => {
@@ -516,6 +670,35 @@ export default function ProductDetailPage() {
           </section>
         ) : null;
       })()}
+
+      <RecentlyViewedInDetail currentProductId={product.id} />
     </div>
+  );
+}
+
+function RecentlyViewedInDetail({ currentProductId }: { currentProductId: number }) {
+  const { getRecentlyViewedIds } = useRecentlyViewed();
+  const recentIds = getRecentlyViewedIds().filter(id => id !== currentProductId);
+  const { data: allProducts = [] } = useQuery<Product[]>({
+    queryKey: ["/api/products"],
+    enabled: recentIds.length > 0,
+  });
+
+  const recentProducts = recentIds
+    .map(id => allProducts.find(p => p.id === id))
+    .filter((p): p is Product => !!p)
+    .slice(0, 6);
+
+  if (recentProducts.length === 0) return null;
+
+  return (
+    <section className="mt-16" data-testid="recently-viewed-detail">
+      <h2 className="text-2xl font-bold font-heading mb-8">Son Baktıklarınız</h2>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {recentProducts.map(p => (
+          <ProductCard key={p.id} product={p} />
+        ))}
+      </div>
+    </section>
   );
 }

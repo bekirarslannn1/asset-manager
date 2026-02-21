@@ -112,14 +112,27 @@ export default function ProductCard({ product }: { product: Product }) {
             </div>
           )}
 
-          {discount > 0 && (
-            <Badge className="absolute top-1.5 left-1.5 bg-red-500 text-white text-[9px] px-1.5 py-0.5 font-bold" data-testid={`badge-discount-${product.id}`}>
-              %{discount}
-            </Badge>
-          )}
-          {product.isNewArrival && (
-            <Badge className="absolute top-1.5 right-1.5 bg-blue-500 text-white text-[9px] px-1.5 py-0.5">Yeni</Badge>
-          )}
+          <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 z-[5]">
+            {discount > 0 && (
+              <Badge className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 font-bold" data-testid={`badge-discount-${product.id}`}>
+                %{discount}
+              </Badge>
+            )}
+            {product.isBestSeller && (
+              <Badge className="bg-primary text-primary-foreground text-[9px] px-1.5 py-0.5" data-testid={`badge-bestseller-${product.id}`}>Çok Satan</Badge>
+            )}
+            {product.stock !== null && product.stock > 0 && product.stock <= 5 && (
+              <Badge className="bg-orange-500 text-white text-[9px] px-1.5 py-0.5 animate-pulse" data-testid={`badge-lowstock-${product.id}`}>Son {product.stock} Adet!</Badge>
+            )}
+            {product.stock !== null && product.stock <= 0 && (
+              <Badge className="bg-gray-500 text-white text-[9px] px-1.5 py-0.5" data-testid={`badge-outofstock-${product.id}`}>Tükendi</Badge>
+            )}
+          </div>
+          <div className="absolute top-1.5 right-10 flex flex-col gap-1 z-[5]">
+            {product.isNewArrival && (
+              <Badge className="bg-blue-500 text-white text-[9px] px-1.5 py-0.5" data-testid={`badge-new-${product.id}`}>Yeni</Badge>
+            )}
+          </div>
         </div>
       </Link>
 
@@ -148,6 +161,11 @@ export default function ProductCard({ product }: { product: Product }) {
       </button>
 
       <div className="p-2.5">
+        {parseFloat(product.price) >= 500 && (
+          <div className="flex items-center gap-1 mb-1">
+            <Badge className="bg-emerald-500/20 text-emerald-400 text-[8px] px-1 py-0 border-0" data-testid={`badge-freeship-${product.id}`}>Ücretsiz Kargo</Badge>
+          </div>
+        )}
         <Link href={`/urun/${product.slug}`}>
           <h3 className="font-medium text-xs line-clamp-2 hover:text-primary transition-colors cursor-pointer leading-tight min-h-[2rem]" data-testid={`text-product-name-${product.id}`}>
             {product.name}

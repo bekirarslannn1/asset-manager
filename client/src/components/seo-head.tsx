@@ -19,6 +19,55 @@ export function ProductJsonLd({ slug }: { slug: string }) {
   return data ? <JsonLdScript data={data} /> : null;
 }
 
+export function BreadcrumbJsonLd({ items }: { items: { name: string; url: string }[] }) {
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": items.map((item, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "name": item.name,
+      "item": item.url,
+    })),
+  };
+  return <JsonLdScript data={data} />;
+}
+
+export function PageSeo({ title, description, image, url }: { title: string; description?: string; image?: string; url?: string }) {
+  useEffect(() => {
+    if (!title) return;
+
+    const setMeta = (name: string, content: string, attr: string = "name") => {
+      if (!content) return;
+      let el = document.querySelector(`meta[${attr}="${name}"]`) as HTMLMetaElement | null;
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute(attr, name);
+        document.head.appendChild(el);
+      }
+      el.content = content;
+    };
+
+    document.title = title;
+    setMeta("og:title", title, "property");
+    if (description) {
+      setMeta("description", description);
+      setMeta("og:description", description, "property");
+      setMeta("twitter:description", description, "name");
+    }
+    if (image) {
+      setMeta("og:image", image, "property");
+    }
+    if (url) {
+      setMeta("og:url", url, "property");
+    }
+    setMeta("twitter:title", title, "name");
+    setMeta("twitter:card", "summary_large_image", "name");
+  }, [title, description, image, url]);
+
+  return null;
+}
+
 export default function SeoHead() {
   const { getSetting, isLoading } = useSettings();
   const { data: orgJsonLd } = useQuery({ queryKey: ["/api/jsonld/organization"] });
@@ -64,6 +113,15 @@ export default function SeoHead() {
       }
       link.href = favicon;
     }
+
+    const canonicalUrl = window.location.origin + window.location.pathname;
+    let canonical = document.querySelector("link[rel='canonical']") as HTMLLinkElement | null;
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.rel = "canonical";
+      document.head.appendChild(canonical);
+    }
+    canonical.href = canonicalUrl;
   }, [getSetting, isLoading]);
 
   return orgJsonLd ? <JsonLdScript data={orgJsonLd} /> : null;

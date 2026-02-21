@@ -106,6 +106,13 @@ export async function registerRoutes(
 ): Promise<Server> {
   await seedDatabase();
 
+  app.get("/robots.txt", (_req, res) => {
+    const host = `${_req.protocol}://${_req.get("host")}`;
+    res.type("text/plain").send(
+      `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\n\nSitemap: ${host}/sitemap.xml`
+    );
+  });
+
   app.post("/api/auth/register", async (req, res) => {
     try {
       const { username, email, password, fullName, phone } = req.body;
@@ -186,6 +193,29 @@ export async function registerRoutes(
     }
   });
 
+  // User addresses
+  app.get("/api/addresses", requireAuth, async (req, res) => {
+    res.json(await storage.getUserAddresses((req as any).user.id));
+  });
+
+  app.post("/api/addresses", requireAuth, async (req, res) => {
+    const { title, fullName, phone, city, district, neighborhood, address, postalCode, isDefault } = req.body;
+    if (!title || !fullName || !city || !address) return res.status(400).json({ error: "Zorunlu alanları doldurun" });
+    const addr = await storage.createUserAddress({ userId: (req as any).user.id, title, fullName, phone, city, district, neighborhood, address, postalCode, isDefault });
+    res.status(201).json(addr);
+  });
+
+  app.patch("/api/addresses/:id", requireAuth, async (req, res) => {
+    const addr = await storage.updateUserAddress(Number(req.params.id), (req as any).user.id, req.body);
+    if (!addr) return res.status(404).json({ error: "Adres bulunamadı" });
+    res.json(addr);
+  });
+
+  app.delete("/api/addresses/:id", requireAuth, async (req, res) => {
+    await storage.deleteUserAddress(Number(req.params.id), (req as any).user.id);
+    res.json({ success: true });
+  });
+
   app.get("/api/categories", async (req, res) => {
     res.json(await storage.getCategories());
   });
@@ -249,6 +279,25 @@ export async function registerRoutes(
 
   app.get("/api/products/:id/variants", async (req, res) => {
     res.json(await storage.getVariantsByProduct(Number(req.params.id)));
+  });
+
+  app.get("/api/products/:id/rating-distribution", async (req, res) => {
+    const dist = await storage.getReviewRatingDistribution(Number(req.params.id));
+    const result: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    dist.forEach(d => { result[d.rating] = d.count; });
+    res.json(result);
+  });
+
+  app.get("/api/products/:id/questions", async (req, res) => {
+    res.json(await storage.getQuestionsByProduct(Number(req.params.id)));
+  });
+
+  app.post("/api/products/:id/questions", async (req, res) => {
+    const { userName, email, question } = req.body;
+    if (!userName || !question) return res.status(400).json({ error: "İsim ve soru zorunludur" });
+    if (question.length < 10) return res.status(400).json({ error: "Soru en az 10 karakter olmalıdır" });
+    const q = await storage.createQuestion({ productId: Number(req.params.id), userName, email, question, isApproved: false });
+    res.status(201).json(q);
   });
 
   app.post("/api/reviews", async (req, res) => {
@@ -902,9 +951,70 @@ export async function registerRoutes(
     res.json(review);
   });
 
+  app.post("/api/admin/reviews/:id/approve", async (req, res) => {
+    const review = await storage.approveReview(Number(req.params.id));
+    await logAudit(req, "update", "reviews", Number(req.params.id));
+    res.json(review);
+  });
+
+  app.post("/api/admin/reviews/:id/reply", async (req, res) => {
+    const { reply } = req.body;
+    if (!reply) return res.status(400).json({ error: "Yanıt zorunludur" });
+    const review = await storage.updateReviewReply(Number(req.params.id), reply);
+    await logAudit(req, "update", "reviews", Number(req.params.id));
+    res.json(review);
+  });
+
   app.delete("/api/admin/reviews/:id", async (req, res) => {
     await storage.deleteReview(Number(req.params.id));
     await logAudit(req, "delete", "reviews", Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  // Q&A admin
+  app.get("/api/admin/questions", async (req, res) => {
+    const questions = await storage.getAllQuestions();
+    const products = await storage.getAllProducts();
+    const productMap = new Map(products.map(p => [p.id, p.name]));
+    res.json(questions.map(q => ({ ...q, productName: productMap.get(q.productId) || `Ürün #${q.productId}` })));
+  });
+
+  app.post("/api/admin/questions/:id/answer", async (req, res) => {
+    const { answer } = req.body;
+    if (!answer) return res.status(400).json({ error: "Cevap zorunludur" });
+    const q = await storage.answerQuestion(Number(req.params.id), { answer, answeredBy: "Admin" });
+    await logAudit(req, "update", "questions", Number(req.params.id));
+    res.json(q);
+  });
+
+  app.delete("/api/admin/questions/:id", async (req, res) => {
+    await storage.deleteQuestion(Number(req.params.id));
+    await logAudit(req, "delete", "questions", Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  // Stock notifications admin
+  app.get("/api/admin/stock-notifications", async (req, res) => {
+    const notifs = await storage.getStockNotifications();
+    const products = await storage.getAllProducts();
+    const productMap = new Map(products.map(p => [p.id, p.name]));
+    res.json(notifs.map(n => ({ ...n, productName: productMap.get(n.productId) || `Ürün #${n.productId}` })));
+  });
+
+  // Order notes admin
+  app.get("/api/admin/orders/:id/notes", async (req, res) => {
+    res.json(await storage.getOrderNotes(Number(req.params.id)));
+  });
+
+  app.post("/api/admin/orders/:id/notes", async (req, res) => {
+    const { note, isInternal } = req.body;
+    if (!note) return res.status(400).json({ error: "Not zorunludur" });
+    const orderNote = await storage.createOrderNote({ orderId: Number(req.params.id), userName: "Admin", note, isInternal: isInternal !== false });
+    res.status(201).json(orderNote);
+  });
+
+  app.delete("/api/admin/order-notes/:id", async (req, res) => {
+    await storage.deleteOrderNote(Number(req.params.id));
     res.json({ success: true });
   });
 
