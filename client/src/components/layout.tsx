@@ -183,11 +183,32 @@ function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const { totalItems } = useCart();
   const { getSetting } = useSettings();
 
   const { data: categories = [] } = useQuery<Category[]>({ queryKey: ["/api/categories"] });
   const { data: headerNavLinks = [] } = useQuery<NavigationLink[]>({ queryKey: ["/api/navigation?position=header"] });
+
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const { data: suggestions = [] } = useQuery<{ id: number; name: string; slug: string; price: string; comparePrice: string | null; images: string[] | null }[]>({
+    queryKey: [`/api/products/suggestions?q=${encodeURIComponent(debouncedQuery)}`],
+    enabled: debouncedQuery.length >= 2,
+  });
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setShowSuggestions(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,6 +216,7 @@ function Header() {
       setLocation(`/urunler?search=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");
       setSearchOpen(false);
+      setShowSuggestions(false);
     }
   };
 
@@ -288,16 +310,57 @@ function Header() {
       </div>
 
       {searchOpen && (
-        <div className="border-t border-border bg-background px-4 py-3" data-testid="search-bar">
-          <form onSubmit={handleSearch} className="max-w-2xl mx-auto flex gap-2">
-            <Input
-              placeholder="Ürün ara... (örn: whey protein)"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1"
-              autoFocus
-              data-testid="input-search"
-            />
+        <div className="border-t border-border bg-background px-4 py-3" data-testid="search-bar" ref={searchRef}>
+          <form onSubmit={handleSearch} className="max-w-2xl mx-auto flex gap-2 relative">
+            <div className="flex-1 relative">
+              <Input
+                placeholder="Ürün ara... (örn: whey protein, kreatin, bcaa)"
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => setShowSuggestions(true)}
+                className="flex-1"
+                autoFocus
+                data-testid="input-search"
+              />
+              {showSuggestions && suggestions.length > 0 && searchQuery.trim().length >= 2 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden" data-testid="search-suggestions">
+                  {suggestions.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted transition-colors text-left"
+                      onClick={() => {
+                        setLocation(`/urun/${s.slug}`);
+                        setSearchQuery("");
+                        setSearchOpen(false);
+                        setShowSuggestions(false);
+                      }}
+                      data-testid={`suggestion-${s.id}`}
+                    >
+                      {s.images && s.images[0] && (
+                        <img src={s.images[0]} alt={s.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{s.name}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-primary">{Number(s.price).toLocaleString("tr-TR")}₺</span>
+                          {s.comparePrice && (
+                            <span className="text-xs text-muted-foreground line-through">{Number(s.comparePrice).toLocaleString("tr-TR")}₺</span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  <button
+                    type="submit"
+                    className="w-full px-4 py-2.5 text-sm text-primary hover:bg-muted transition-colors border-t border-border font-medium"
+                    data-testid="button-search-all"
+                  >
+                    "{searchQuery}" için tüm sonuçları göster →
+                  </button>
+                </div>
+              )}
+            </div>
             <Button type="submit" className="neon-glow" data-testid="button-search-submit">Ara</Button>
           </form>
         </div>

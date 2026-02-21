@@ -9,6 +9,7 @@ import { formatPrice, discountPercent } from "@/lib/utils";
 import { useCart } from "@/hooks/use-cart";
 import { useFavorites } from "@/hooks/use-favorites";
 import ProductCard from "@/components/product-card";
+import { ProductJsonLd } from "@/components/seo-head";
 import type { Product, Review, ProductVariant } from "@shared/schema";
 
 export default function ProductDetailPage() {
@@ -87,6 +88,7 @@ export default function ProductDetailPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8" data-testid="product-detail-page">
+      {slug && <ProductJsonLd slug={slug} />}
       <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8" data-testid="breadcrumb">
         <Link href="/"><span className="hover:text-primary cursor-pointer">Ana Sayfa</span></Link>
         <ChevronRight className="w-3.5 h-3.5" />

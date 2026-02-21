@@ -1,8 +1,27 @@
 import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useSettings } from "@/hooks/use-settings";
+
+export function JsonLdScript({ data }: { data: any }) {
+  useEffect(() => {
+    if (!data) return;
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.textContent = JSON.stringify(data);
+    document.head.appendChild(script);
+    return () => { document.head.removeChild(script); };
+  }, [data]);
+  return null;
+}
+
+export function ProductJsonLd({ slug }: { slug: string }) {
+  const { data } = useQuery({ queryKey: ["/api/jsonld/product", slug], enabled: !!slug });
+  return data ? <JsonLdScript data={data} /> : null;
+}
 
 export default function SeoHead() {
   const { getSetting, isLoading } = useSettings();
+  const { data: orgJsonLd } = useQuery({ queryKey: ["/api/jsonld/organization"] });
 
   useEffect(() => {
     if (isLoading) return;
@@ -47,5 +66,5 @@ export default function SeoHead() {
     }
   }, [getSetting, isLoading]);
 
-  return null;
+  return orgJsonLd ? <JsonLdScript data={orgJsonLd} /> : null;
 }

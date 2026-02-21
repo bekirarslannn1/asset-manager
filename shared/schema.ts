@@ -66,6 +66,7 @@ export const products = pgTable("products", {
   isGlutenFree: boolean("is_gluten_free").default(false),
   isLactoseFree: boolean("is_lactose_free").default(false),
   isSugarFree: boolean("is_sugar_free").default(false),
+  goalTags: text("goal_tags").array(),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
@@ -232,6 +233,22 @@ export const navigationLinks = pgTable("navigation_links", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+export const bundles = pgTable("bundles", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+  image: text("image"),
+  goalTags: text("goal_tags").array(),
+  items: jsonb("items").notNull(),
+  discountPercent: integer("discount_percent").default(10),
+  price: decimal("price", { precision: 10, scale: 2 }),
+  comparePrice: decimal("compare_price", { precision: 10, scale: 2 }),
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
 export const testimonials = pgTable("testimonials", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -262,6 +279,7 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: tru
 export const insertConsentRecordSchema = createInsertSchema(consentRecords).omit({ id: true, createdAt: true });
 export const insertPageLayoutSchema = createInsertSchema(pageLayouts).omit({ id: true, createdAt: true });
 export const insertNavigationLinkSchema = createInsertSchema(navigationLinks).omit({ id: true, createdAt: true });
+export const insertBundleSchema = createInsertSchema(bundles).omit({ id: true, createdAt: true });
 export const insertTestimonialSchema = createInsertSchema(testimonials).omit({ id: true, createdAt: true });
 export const insertPaymentMethodSchema = createInsertSchema(paymentMethods).omit({ id: true });
 
@@ -301,6 +319,8 @@ export type PageLayout = typeof pageLayouts.$inferSelect;
 export type InsertPageLayout = z.infer<typeof insertPageLayoutSchema>;
 export type NavigationLink = typeof navigationLinks.$inferSelect;
 export type InsertNavigationLink = z.infer<typeof insertNavigationLinkSchema>;
+export type Bundle = typeof bundles.$inferSelect;
+export type InsertBundle = z.infer<typeof insertBundleSchema>;
 export type Testimonial = typeof testimonials.$inferSelect;
 export type InsertTestimonial = z.infer<typeof insertTestimonialSchema>;
 export type PaymentMethod = typeof paymentMethods.$inferSelect;

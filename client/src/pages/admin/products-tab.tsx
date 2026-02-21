@@ -32,6 +32,7 @@ export default function ProductsTab() {
     usageInstructions: "", flavors: "", weights: "",
     isFeatured: false, isBestSeller: false, isNewArrival: false,
     isVegan: false, isGlutenFree: false, isLactoseFree: false, isSugarFree: false,
+    goalTags: [] as string[],
   });
   const [imageUrls, setImageUrls] = useState<string[]>([""]);
   const [nutritionEntries, setNutritionEntries] = useState<NutritionEntry[]>([]);
@@ -72,6 +73,7 @@ export default function ProductsTab() {
       usageInstructions: "", flavors: "", weights: "",
       isFeatured: false, isBestSeller: false, isNewArrival: false,
       isVegan: false, isGlutenFree: false, isLactoseFree: false, isSugarFree: false,
+      goalTags: [],
     });
     setImageUrls([""]);
     setNutritionEntries([]);
@@ -92,6 +94,7 @@ export default function ProductsTab() {
       isFeatured: p.isFeatured || false, isBestSeller: p.isBestSeller || false, isNewArrival: p.isNewArrival || false,
       isVegan: p.isVegan || false, isGlutenFree: p.isGlutenFree || false,
       isLactoseFree: p.isLactoseFree || false, isSugarFree: p.isSugarFree || false,
+      goalTags: (p as any).goalTags || [],
     });
     const imgs = p.images && p.images.length > 0 ? [...p.images] : [""];
     setImageUrls(imgs);
@@ -124,6 +127,7 @@ export default function ProductsTab() {
       nutritionFacts: Object.keys(nutritionFacts).length > 0 ? nutritionFacts : null,
       isFeatured: form.isFeatured, isBestSeller: form.isBestSeller, isNewArrival: form.isNewArrival,
       isVegan: form.isVegan, isGlutenFree: form.isGlutenFree, isLactoseFree: form.isLactoseFree, isSugarFree: form.isSugarFree,
+      goalTags: form.goalTags.length > 0 ? form.goalTags : null,
     };
     if (form.comparePrice) payload.comparePrice = form.comparePrice;
     if (form.brandId) payload.brandId = parseInt(form.brandId);
@@ -466,6 +470,35 @@ export default function ProductsTab() {
                     onChange={(e) => setForm(p => ({ ...p, tags: e.target.value }))}
                     data-testid="input-product-tags"
                   />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Hedef Etiketleri (Sihirbaz için)</Label>
+                  <div className="flex flex-wrap gap-x-6 gap-y-3">
+                    {[
+                      { value: "kas_kazanimi", label: "Kas Kazanımı" },
+                      { value: "yag_yakim", label: "Yağ Yakım" },
+                      { value: "genel_saglik", label: "Genel Sağlık" },
+                      { value: "performans", label: "Performans" },
+                      { value: "toparlanma", label: "Toparlanma" },
+                      { value: "kilo_alma", label: "Kilo Alma" },
+                    ].map(({ value, label }) => (
+                      <label key={value} className="flex items-center gap-2 text-sm cursor-pointer" data-testid={`checkbox-label-goal-${value}`}>
+                        <Checkbox
+                          checked={form.goalTags.includes(value)}
+                          onCheckedChange={(checked) => {
+                            setForm(p => ({
+                              ...p,
+                              goalTags: checked
+                                ? [...p.goalTags, value]
+                                : p.goalTags.filter(t => t !== value),
+                            }));
+                          }}
+                          data-testid={`checkbox-goal-${value}`}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-x-6 gap-y-3">
                   {[

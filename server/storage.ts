@@ -17,12 +17,13 @@ import {
   type ConsentRecord, type InsertConsentRecord,
   type PageLayout, type InsertPageLayout,
   type NavigationLink, type InsertNavigationLink,
+  type Bundle, type InsertBundle,
   type Testimonial, type InsertTestimonial,
   type PaymentMethod, type InsertPaymentMethod,
-  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, testimonials, paymentMethods,
+  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, bundles, testimonials, paymentMethods,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, ilike, desc, asc, gte, lte, sql, count, sum } from "drizzle-orm";
+import { eq, and, or, ilike, desc, asc, gte, lte, sql, count, sum } from "drizzle-orm";
 
 export interface ProductFilters {
   categoryId?: number;
@@ -182,7 +183,38 @@ export class DatabaseStorage {
     return db.select().from(products).where(and(eq(products.isActive, true), eq(products.isNewArrival, true))).orderBy(desc(products.createdAt)).limit(12);
   }
   async searchProducts(query: string): Promise<Product[]> {
-    return db.select().from(products).where(and(eq(products.isActive, true), ilike(products.name, `%${query}%`))).limit(20);
+    const q = query.trim();
+    if (!q) return [];
+    const terms = q.split(/\s+/).filter(Boolean);
+    const conditions = terms.map(term =>
+      or(
+        ilike(products.name, `%${term}%`),
+        ilike(products.description, `%${term}%`),
+        ilike(products.shortDescription, `%${term}%`),
+        sql`EXISTS (SELECT 1 FROM unnest(${products.tags}) AS t WHERE t ILIKE ${'%' + term + '%'})`,
+      )
+    );
+    return db.select().from(products).where(and(eq(products.isActive, true), ...conditions)).limit(20);
+  }
+
+  async searchProductsSuggestions(query: string): Promise<Pick<Product, 'id' | 'name' | 'slug' | 'price' | 'comparePrice' | 'images'>[]> {
+    const q = query.trim();
+    if (!q) return [];
+    return db.select({
+      id: products.id,
+      name: products.name,
+      slug: products.slug,
+      price: products.price,
+      comparePrice: products.comparePrice,
+      images: products.images,
+    }).from(products).where(and(
+      eq(products.isActive, true),
+      or(
+        ilike(products.name, `%${q}%`),
+        ilike(products.shortDescription, `%${q}%`),
+        sql`EXISTS (SELECT 1 FROM unnest(${products.tags}) AS t WHERE t ILIKE ${'%' + q + '%'})`,
+      ),
+    )).limit(8);
   }
 
   async getVariantsByProduct(productId: number): Promise<ProductVariant[]> {
@@ -486,6 +518,31 @@ export class DatabaseStorage {
   }
   async deletePaymentMethod(id: number): Promise<void> {
     await db.delete(paymentMethods).where(eq(paymentMethods.id, id));
+  }
+
+  async getBundles(): Promise<Bundle[]> {
+    return db.select().from(bundles).where(eq(bundles.isActive, true)).orderBy(asc(bundles.sortOrder));
+  }
+  async getAllBundles(): Promise<Bundle[]> {
+    return db.select().from(bundles).orderBy(asc(bundles.sortOrder));
+  }
+  async getBundleBySlug(slug: string): Promise<Bundle | undefined> {
+    const [bundle] = await db.select().from(bundles).where(eq(bundles.slug, slug));
+    return bundle;
+  }
+  async getBundlesByGoal(goal: string): Promise<Bundle[]> {
+    return db.select().from(bundles).where(eq(bundles.isActive, true)).orderBy(asc(bundles.sortOrder));
+  }
+  async createBundle(data: InsertBundle): Promise<Bundle> {
+    const [created] = await db.insert(bundles).values(data).returning();
+    return created;
+  }
+  async updateBundle(id: number, data: Partial<InsertBundle>): Promise<Bundle | undefined> {
+    const [updated] = await db.update(bundles).set(data).where(eq(bundles.id, id)).returning();
+    return updated;
+  }
+  async deleteBundle(id: number): Promise<void> {
+    await db.delete(bundles).where(eq(bundles.id, id));
   }
 
   async anonymizeUser(userId: number): Promise<void> {

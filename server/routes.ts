@@ -17,6 +17,10 @@ const iyzipay = new Iyzipay({
   uri: process.env.IYZICO_URI || "https://sandbox-api.iyzipay.com",
 });
 
+function escapeXml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
 function generateToken(user: { id: number; username: string; role: string }) {
   return jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
 }
@@ -189,6 +193,11 @@ export async function registerRoutes(
     res.json(await storage.searchProducts(q));
   });
 
+  app.get("/api/products/suggestions", async (req, res) => {
+    const q = req.query.q as string || "";
+    res.json(await storage.searchProductsSuggestions(q));
+  });
+
   app.get("/api/products/:slug", async (req, res) => {
     const p = await storage.getProductBySlug(req.params.slug);
     if (!p) return res.status(404).json({ error: "Ürün bulunamadı" });
@@ -327,6 +336,92 @@ export async function registerRoutes(
 
   app.get("/api/testimonials", async (req, res) => {
     res.json(await storage.getTestimonials());
+  });
+
+  app.get("/api/bundles", async (req, res) => {
+    const allBundles = await storage.getBundles();
+    const allProducts = await storage.getAllProducts();
+    const enriched = allBundles.map(bundle => {
+      const items = (Array.isArray(bundle.items) ? bundle.items : []) as { productId: number; quantity: number }[];
+      const bundleProducts = items.map(item => {
+        const product = allProducts.find(p => p.id === item.productId);
+        return product ? { ...item, product } : null;
+      }).filter(Boolean);
+      return { ...bundle, bundleProducts };
+    });
+    res.json(enriched);
+  });
+
+  app.get("/api/bundles/:slug", async (req, res) => {
+    const bundle = await storage.getBundleBySlug(req.params.slug);
+    if (!bundle) return res.status(404).json({ error: "Paket bulunamadı" });
+    const allProducts = await storage.getAllProducts();
+    const items = (Array.isArray(bundle.items) ? bundle.items : []) as { productId: number; quantity: number }[];
+    const bundleProducts = items.map(item => {
+      const product = allProducts.find(p => p.id === item.productId);
+      return product ? { ...item, product } : null;
+    }).filter(Boolean);
+    res.json({ ...bundle, bundleProducts });
+  });
+
+  app.post("/api/wizard/analyze", async (req, res) => {
+    try {
+      const { age, weight, goal, gender, trainingFrequency, dietType } = req.body;
+      const allBundles = await storage.getBundles();
+      const allProducts = await storage.getAllProducts();
+
+      const goalMap: Record<string, string[]> = {
+        kas_kazanimi: ["kas_kazanimi", "bulk", "muscle_gain", "kas"],
+        yag_yakim: ["yag_yakim", "cut", "fat_loss", "diyet", "definasyon"],
+        genel_saglik: ["genel_saglik", "health", "saglik", "wellness"],
+        performans: ["performans", "performance", "guc", "strength"],
+        toparlanma: ["toparlanma", "recovery", "kur"],
+        kilo_alma: ["kilo_alma", "weight_gain", "bulk"],
+      };
+
+      const goalTerms = goalMap[goal] || [goal];
+
+      const scoredBundles = allBundles.map(bundle => {
+        let score = 0;
+        const bundleGoals = (bundle.goalTags || []).map((g: string) => g.toLowerCase());
+
+        for (const term of goalTerms) {
+          if (bundleGoals.includes(term.toLowerCase())) score += 30;
+        }
+
+        if (bundle.name.toLowerCase().includes(goal.replace(/_/g, " "))) score += 10;
+        if (bundle.description?.toLowerCase().includes(goal.replace(/_/g, " "))) score += 5;
+
+        if (age && parseInt(age) > 35) {
+          if (bundleGoals.includes("toparlanma") || bundleGoals.includes("recovery")) score += 5;
+        }
+        if (trainingFrequency && parseInt(trainingFrequency) >= 5) {
+          if (bundleGoals.includes("performans") || bundleGoals.includes("performance")) score += 5;
+        }
+
+        const items = (Array.isArray(bundle.items) ? bundle.items : []) as { productId: number; quantity: number }[];
+        const bundleProducts = items.map(item => {
+          const product = allProducts.find(p => p.id === item.productId);
+          return product ? { ...item, product } : null;
+        }).filter(Boolean);
+
+        return { ...bundle, bundleProducts, matchScore: Math.min(score, 98) };
+      });
+
+      const matched = scoredBundles
+        .filter(b => b.matchScore > 0)
+        .sort((a, b) => b.matchScore - a.matchScore);
+
+      const fallback = matched.length > 0 ? matched : scoredBundles.map(b => ({ ...b, matchScore: 85 }));
+
+      res.json({
+        profile: { age, weight, goal, gender, trainingFrequency, dietType },
+        recommendations: fallback.slice(0, 5),
+        matchPercentage: fallback[0]?.matchScore || 85,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.get("/api/layouts", async (req, res) => {
@@ -617,6 +712,25 @@ export async function registerRoutes(
   app.delete("/api/admin/navigation/:id", async (req, res) => {
     await storage.deleteNavigationLink(Number(req.params.id));
     await logAudit(req, "delete", "navigation", Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  app.get("/api/admin/bundles", async (req, res) => {
+    res.json(await storage.getAllBundles());
+  });
+  app.post("/api/admin/bundles", async (req, res) => {
+    const bundle = await storage.createBundle(req.body);
+    await logAudit(req, "create", "bundles", bundle.id);
+    res.json(bundle);
+  });
+  app.patch("/api/admin/bundles/:id", async (req, res) => {
+    const updated = await storage.updateBundle(Number(req.params.id), req.body);
+    await logAudit(req, "update", "bundles", Number(req.params.id));
+    res.json(updated);
+  });
+  app.delete("/api/admin/bundles/:id", async (req, res) => {
+    await storage.deleteBundle(Number(req.params.id));
+    await logAudit(req, "delete", "bundles", Number(req.params.id));
     res.json({ success: true });
   });
 
@@ -920,6 +1034,167 @@ export async function registerRoutes(
     } catch (e: any) {
       res.status(500).json({ status: "failure", errorMessage: e.message || "Sunucu hatası" });
     }
+  });
+
+  app.get("/api/jsonld/organization", async (_req, res) => {
+    const settings = await storage.getSettings();
+    const getSetting = (key: string) => settings.find(s => s.key === key)?.value || "";
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: getSetting("site_name") || "FitSupp",
+      url: getSetting("site_url") || "",
+      logo: getSetting("logo_url") || "",
+      description: getSetting("site_description") || "",
+      contactPoint: {
+        "@type": "ContactPoint",
+        telephone: getSetting("phone") || "",
+        email: getSetting("email") || "",
+        contactType: "customer service",
+        availableLanguage: "Turkish",
+      },
+      sameAs: [getSetting("instagram"), getSetting("facebook"), getSetting("twitter"), getSetting("youtube")].filter(Boolean),
+    };
+    res.json(jsonLd);
+  });
+
+  app.get("/api/jsonld/product/:slug", async (req, res) => {
+    const product = await storage.getProductBySlug(req.params.slug);
+    if (!product) return res.status(404).json({ error: "Not found" });
+    const settings = await storage.getSettings();
+    const siteUrl = settings.find(s => s.key === "site_url")?.value || "";
+    const siteName = settings.find(s => s.key === "site_name")?.value || "FitSupp";
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: product.name,
+      description: product.description,
+      image: product.images || [],
+      sku: product.sku,
+      brand: { "@type": "Brand", name: siteName },
+      offers: {
+        "@type": "Offer",
+        url: `${siteUrl}/urun/${product.slug}`,
+        priceCurrency: "TRY",
+        price: product.price,
+        availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+        seller: { "@type": "Organization", name: siteName },
+      },
+      aggregateRating: product.reviewCount > 0 ? {
+        "@type": "AggregateRating",
+        ratingValue: product.rating,
+        reviewCount: product.reviewCount,
+      } : undefined,
+    };
+    res.json(jsonLd);
+  });
+
+  app.get("/feed/trendyol.xml", async (_req, res) => {
+    const allProducts = await storage.getProducts({});
+    const settings = await storage.getSettings();
+    const siteName = settings.find(s => s.key === "site_name")?.value || "FitSupp";
+    const siteUrl = settings.find(s => s.key === "site_url")?.value || "";
+    const cats = await storage.getCategories();
+    const brandList = await storage.getBrands();
+
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<products>`;
+    for (const p of allProducts) {
+      const cat = cats.find(c => c.id === p.categoryId);
+      const brand = brandList.find(b => b.id === p.brandId);
+      xml += `
+  <product>
+    <barcode>${p.sku || ''}</barcode>
+    <title>${escapeXml(p.name)}</title>
+    <productMainId>${p.id}</productMainId>
+    <brandName>${escapeXml(brand?.name || siteName)}</brandName>
+    <categoryName>${escapeXml(cat?.name || 'Supplement')}</categoryName>
+    <quantity>${p.stock}</quantity>
+    <salePrice>${p.price}</salePrice>
+    <listPrice>${p.comparePrice || p.price}</listPrice>
+    <currencyType>TRY</currencyType>
+    <description>${escapeXml(p.description || '')}</description>
+    <productUrl>${siteUrl}/urun/${p.slug}</productUrl>
+    <images>${(p.images || []).map((img: string) => `
+      <image><url>${escapeXml(img)}</url></image>`).join('')}
+    </images>
+  </product>`;
+    }
+    xml += `
+</products>`;
+    res.set("Content-Type", "application/xml; charset=utf-8");
+    res.send(xml);
+  });
+
+  app.get("/feed/hepsiburada.xml", async (_req, res) => {
+    const allProducts = await storage.getProducts({});
+    const settings = await storage.getSettings();
+    const siteName = settings.find(s => s.key === "site_name")?.value || "FitSupp";
+    const siteUrl = settings.find(s => s.key === "site_url")?.value || "";
+    const cats = await storage.getCategories();
+    const brandList = await storage.getBrands();
+
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<merchantFeed>
+  <merchant name="${escapeXml(siteName)}" />
+  <listings>`;
+    for (const p of allProducts) {
+      const cat = cats.find(c => c.id === p.categoryId);
+      const brand = brandList.find(b => b.id === p.brandId);
+      xml += `
+    <listing>
+      <merchantSku>${p.sku || p.id}</merchantSku>
+      <productName>${escapeXml(p.name)}</productName>
+      <brand>${escapeXml(brand?.name || siteName)}</brand>
+      <category>${escapeXml(cat?.name || 'Supplement')}</category>
+      <price>${p.price}</price>
+      <listPrice>${p.comparePrice || p.price}</listPrice>
+      <availableStock>${p.stock}</availableStock>
+      <productUrl>${siteUrl}/urun/${p.slug}</productUrl>
+      <imageUrl>${(p.images && p.images[0]) || ''}</imageUrl>
+      <description>${escapeXml(p.description || '')}</description>
+    </listing>`;
+    }
+    xml += `
+  </listings>
+</merchantFeed>`;
+    res.set("Content-Type", "application/xml; charset=utf-8");
+    res.send(xml);
+  });
+
+  app.get("/feed/n11.xml", async (_req, res) => {
+    const allProducts = await storage.getProducts({});
+    const settings = await storage.getSettings();
+    const siteName = settings.find(s => s.key === "site_name")?.value || "FitSupp";
+    const siteUrl = settings.find(s => s.key === "site_url")?.value || "";
+    const cats = await storage.getCategories();
+    const brandList = await storage.getBrands();
+
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<products seller="${escapeXml(siteName)}">`;
+    for (const p of allProducts) {
+      const cat = cats.find(c => c.id === p.categoryId);
+      const brand = brandList.find(b => b.id === p.brandId);
+      xml += `
+  <product>
+    <stockCode>${p.sku || p.id}</stockCode>
+    <title>${escapeXml(p.name)}</title>
+    <brand>${escapeXml(brand?.name || siteName)}</brand>
+    <category>${escapeXml(cat?.name || 'Supplement')}</category>
+    <price>${p.price}</price>
+    <marketPrice>${p.comparePrice || p.price}</marketPrice>
+    <stockAmount>${p.stock}</stockAmount>
+    <url>${siteUrl}/urun/${p.slug}</url>
+    <images>${(p.images || []).map((img: string, idx: number) => `
+      <image order="${idx + 1}">${escapeXml(img)}</image>`).join('')}
+    </images>
+    <description>${escapeXml(p.description || '')}</description>
+  </product>`;
+    }
+    xml += `
+</products>`;
+    res.set("Content-Type", "application/xml; charset=utf-8");
+    res.send(xml);
   });
 
   app.post("/api/payment/installment", async (req, res) => {
