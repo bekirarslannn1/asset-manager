@@ -120,7 +120,10 @@ export async function registerRoutes(
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { username, password } = req.body;
-      const user = await storage.getUserByUsername(username);
+      let user = await storage.getUserByUsername(username);
+      if (!user && username.includes("@")) {
+        user = await storage.getUserByEmail(username);
+      }
       if (!user) return res.status(401).json({ error: "Kullanıcı bulunamadı" });
       if (!user.isActive) return res.status(403).json({ error: "Hesabınız devre dışı" });
       const valid = await bcrypt.compare(password, user.password);

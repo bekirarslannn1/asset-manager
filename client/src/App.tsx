@@ -15,6 +15,7 @@ import FavoritesPage from "@/pages/favorites";
 import BrandsPage from "@/pages/brands";
 import StaticPage from "@/pages/static-page";
 import CheckoutPage from "@/pages/checkout";
+import { LoginPage, RegisterPage } from "@/pages/auth";
 import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 
@@ -31,6 +32,8 @@ function Router() {
         <Route path="/markalar" component={BrandsPage} />
         <Route path="/sayfa/:slug" component={StaticPage} />
         <Route path="/odeme" component={CheckoutPage} />
+        <Route path="/giris" component={LoginPage} />
+        <Route path="/uye-ol" component={RegisterPage} />
         <Route path="/admin" component={AdminPage} />
         <Route component={NotFound} />
       </Switch>

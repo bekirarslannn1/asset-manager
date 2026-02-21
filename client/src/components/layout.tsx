@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useCart } from "@/hooks/use-cart";
+import { useAuth } from "@/hooks/use-auth";
 import { useSettings } from "@/hooks/use-settings";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ShoppingCart, Heart, Search, Menu, X, Phone, Mail, MapPin,
   ChevronDown, User, Package, Truck, Shield, Award, MessageCircle,
-  Instagram, Twitter, Facebook, Youtube,
+  Instagram, Twitter, Facebook, Youtube, LogOut, Settings,
 } from "lucide-react";
 import type { Category } from "@shared/schema";
 
@@ -22,6 +23,123 @@ function AnnouncementBar() {
     <div className="bg-primary text-primary-foreground text-center py-1.5 text-xs font-semibold tracking-wide" data-testid="announcement-bar">
       {text}
     </div>
+  );
+}
+
+function UserMenu() {
+  const [, setLocation] = useLocation();
+  const { user, isLoggedIn, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  if (!isLoggedIn) {
+    return (
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => setLocation("/giris")}
+          className="px-3 py-1.5 text-sm font-medium hover:text-primary transition-colors rounded-lg hover-elevate"
+          data-testid="link-login"
+        >
+          Giriş
+        </button>
+        <Button
+          size="sm"
+          className="neon-glow text-xs"
+          onClick={() => setLocation("/uye-ol")}
+          data-testid="link-register"
+        >
+          Üye Ol
+        </Button>
+      </div>
+    );
+  }
+
+  const isAdmin = user && ["super_admin", "admin"].includes(user.role);
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 px-3 py-1.5 hover:text-primary transition-colors rounded-lg hover-elevate"
+        data-testid="button-user-menu"
+      >
+        <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center">
+          <span className="text-xs font-bold text-primary">{user?.fullName?.charAt(0).toUpperCase()}</span>
+        </div>
+        <span className="text-sm font-medium hidden sm:inline max-w-[100px] truncate">{user?.fullName?.split(" ")[0]}</span>
+        <ChevronDown className="w-3.5 h-3.5" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-xl shadow-xl py-2 z-50" data-testid="user-dropdown">
+          <div className="px-4 py-2 border-b border-border mb-1">
+            <p className="text-sm font-medium truncate">{user?.fullName}</p>
+            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+          </div>
+          {isAdmin && (
+            <button
+              onClick={() => { setLocation("/admin"); setOpen(false); }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted transition-colors text-left"
+              data-testid="link-admin-panel"
+            >
+              <Settings className="w-4 h-4" /> Admin Panel
+            </button>
+          )}
+          <button
+            onClick={() => { logout(); setOpen(false); setLocation("/"); }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted transition-colors text-left text-red-400"
+            data-testid="button-logout"
+          >
+            <LogOut className="w-4 h-4" /> Çıkış Yap
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MobileAuthLinks({ onClose }: { onClose: () => void }) {
+  const { user, isLoggedIn, logout } = useAuth();
+  const [, setLocation] = useLocation();
+
+  if (!isLoggedIn) {
+    return (
+      <>
+        <Link href="/giris" onClick={onClose}>
+          <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer" data-testid="mobile-link-login">Giriş Yap</span>
+        </Link>
+        <Link href="/uye-ol" onClick={onClose}>
+          <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium text-primary cursor-pointer" data-testid="mobile-link-register">Üye Ol</span>
+        </Link>
+      </>
+    );
+  }
+
+  const isAdmin = user && ["super_admin", "admin"].includes(user.role);
+
+  return (
+    <>
+      <div className="px-4 py-2 text-sm text-muted-foreground">{user?.fullName}</div>
+      {isAdmin && (
+        <Link href="/admin" onClick={onClose}>
+          <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer" data-testid="mobile-link-admin">Admin Panel</span>
+        </Link>
+      )}
+      <button
+        onClick={() => { logout(); onClose(); setLocation("/"); }}
+        className="block w-full text-left px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium text-red-400 cursor-pointer"
+        data-testid="mobile-button-logout"
+      >
+        Çıkış Yap
+      </button>
+    </>
   );
 }
 
@@ -112,11 +230,7 @@ function Header() {
                 )}
               </span>
             </Link>
-            <Link href="/admin">
-              <span className="p-2 hover:text-primary transition-colors rounded-lg hover-elevate cursor-pointer hidden sm:block" data-testid="link-admin">
-                <User className="w-5 h-5" />
-              </span>
-            </Link>
+            <UserMenu />
           </div>
         </div>
       </div>
@@ -150,9 +264,9 @@ function Header() {
           <Link href="/urunler" onClick={() => setMobileMenuOpen(false)}>
             <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer">Tüm Ürünler</span>
           </Link>
-          <Link href="/admin" onClick={() => setMobileMenuOpen(false)}>
-            <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer">Admin Panel</span>
-          </Link>
+          <div className="border-t border-border mt-2 pt-2">
+            <MobileAuthLinks onClose={() => setMobileMenuOpen(false)} />
+          </div>
         </div>
       )}
     </header>

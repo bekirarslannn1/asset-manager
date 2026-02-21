@@ -8,7 +8,7 @@ async function throwIfResNotOk(res: Response) {
 }
 
 function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem("admin_token");
+  const token = localStorage.getItem("auth_token") || localStorage.getItem("admin_token");
   if (token) return { Authorization: `Bearer ${token}` };
   return {};
 }
