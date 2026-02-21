@@ -1,0 +1,2525 @@
+SEN BİR SENIOR FULL-STACK GELİŞTİRİCİ VE UI/UX TASARIMCISISIN.
+
+Protein, supplement, vitamin ve spor gıdaları satan profesyonel bir e-ticaret
+platformu geliştir. Platform Türkiye pazarına yönelik, Türkçe olacak.
+
+Aşağıdaki dünya çapındaki rakip sitelerin EN İYİ özelliklerini analiz edip
+hepsini tek bir platformda birleştir:
+
+🇹🇷 Türkiye: supplementler.com, aloprotein.com, fitbull.com, proteinocean.com,
+vucut-gelistirme.com
+🌍 Dünya: iherb.com, myprotein.com, muscleandstrength.com, gnc.com,
+optimumnutrition.com, vitaminshoppe.com, prozis.com, evitamins.com,
+bulksupplements.com
+
+TEKNOLOJİ STACK:
+- Frontend: React 18 + Vite + TailwindCSS + Framer Motion
+- Backend: Node.js + Express.js
+- Veritabanı: MongoDB + Mongoose
+- State: Redux Toolkit + RTK Query
+- Admin Panel: Aynı proje içinde /admin rotası altında tam panel
+- Auth: JWT + Refresh Token
+- Ödeme: İyzico / PayTR entegrasyonu altyapısı
+- Dosya: Cloudinary / AWS S3 entegrasyonu altyapısı
+- SEO: React Helmet Async + SSR-ready yapı
+- PWA: Progressive Web App desteği
+
+=====================================
+📐 BÖLÜM 1: FRONTEND (MÜŞTERİ TARAFI)
+=====================================
+
+🎨 GENEL TASARIM:
+- Renk şeması: Koyu tema (siyah #0a0a0a, koyu gri #1a1a1a, #2d2d2d)
+  + neon yeşil vurgu (#39FF14) + beyaz metin
+- Dark/Light mode toggle
+- Glassmorphism kartlar, gradient butonlar, neon glow efektleri
+- Framer Motion ile sayfa geçişleri, hover animasyonları, scroll reveal
+- Skeleton loading her veri çekilen yerde
+- Responsive mobile-first (320px'den 4K'ya kadar)
+- Font: Poppins (başlık) + Inter (body)
+- Lazy loading tüm görseller ve bileşenler
+- Infinite scroll + pagination seçeneği
+- Toast bildirimleri (başarı, hata, bilgi, uyarı)
+- Breadcrumb navigasyon her sayfada
+
+─────────────────────────────────
+📌 1.1 HEADER & NAVİGASYON
+─────────────────────────────────
+ÜST BAR:
+- Kayan yazı/duyuru bandı (admin panelden yönetilebilir)
+  Ör: "500₺ üzeri KARGO BEDAVA 🚚", "Yeni üyelere %10 HOŞGELDİN indirimi"
+- Sol: Telefon + email
+- Sağ: Sipariş takibi linki, yardım merkezi, blog linki
+- Sosyal medya ikonları
+
+ANA HEADER:
+- Logo (sol) - SVG animasyonlu, hover'da glow efekti
+- Arama çubuğu (orta - geniş alan kaplayacak):
+  → Debounced autocomplete (300ms)
+  → Yazarken ürün önerileri (görsel + isim + fiyat + puan)
+  → Kategori bazlı filtreleme dropdown'u arama yanında
+  → Son arananlar geçmişi (localStorage)
+  → Popüler aramalar etiketi
+  → "X sonuç bulundu" anlık gösterim
+  → Sesli arama ikonu (opsiyonel)
+  → Arama geçmişi temizleme butonu
+- Sağ ikonlar:
+  → Kullanıcı: Giriş yapmışsa avatar + isim dropdown, yapmamışsa giriş/kayıt
+  → Favoriler: Kalp ikonu + badge sayı
+  → Karşılaştırma: Terazi ikonu + badge sayı (max 4 ürün)
+  → Sepet: Alışveriş çantası ikonu + ürün sayı badge + toplam tutar
+  → Sepet hover'da mini sepet preview (dropdown)
+
+MEGA MENÜ:
+- Ana kategoriler yatay sıralı, hover'da mega dropdown
+- Her mega menüde:
+  → Sol: Alt kategori listesi (ikonlu)
+  → Orta: Öne çıkan ürünler (2-3 ürün kartı)
+  → Sağ: Kampanya/banner görseli (admin panelden değiştirilebilir)
+- Mobilde hamburger menü → tam ekran slide menü (kategoriler akordeon açılır)
+- Sticky header: Scroll'da küçülen, yukarı scroll'da tekrar görünen
+
+KATEGORİLER (Hiyerarşik - 3 seviye):
+Protein Tozu
+  ├── Whey Protein
+  │   ├── Whey Concentrate
+  │   ├── Whey İzolat
+  │   └── Whey Hidrolize
+  ├── Casein Protein
+  ├── Vegan Protein
+  ├── Beef Protein
+  ├── Egg Protein
+  └── Protein Karışımları
+Amino Asit & BCAA
+  ├── BCAA
+  ├── EAA
+  ├── L-Glutamin
+  ├── L-Arginin
+  ├── L-Karnitin
+  ├── Beta Alanin
+  └── HMB
+Kreatin
+  ├── Kreatin Monohidrat
+  ├── Kreatin HCL
+  └── Kreatin Karışımları
+Pre-Workout & Enerji
+  ├── Kafeinli Pre-Workout
+  ├── Kafeinsiz Pre-Workout
+  ├── Pump Formülleri
+  └── Enerji İçecekleri
+Kilo & Hacim (Mass Gainer)
+  ├── Gainer
+  ├── Karbonhidrat Tozları
+  └── Kalori Artırıcılar
+Vitamin & Mineral
+  ├── Multivitamin
+  ├── D Vitamini
+  ├── C Vitamini
+  ├── B Kompleks
+  ├── Çinko
+  ├── Magnezyum
+  ├── Omega 3
+  ├── Demir
+  └── Kalsiyum
+Sağlık & Yaşam
+  ├── Bağışıklık Destek
+  ├── Eklem Sağlığı (Glucosamine, Chondroitin)
+  ├── Sindirim & Probiyotik
+  ├── Uyku & Rahatlama
+  ├── Kolajen
+  ├── Antioksidanlar
+  └── Bitkisel Takviyeler
+Diyet & Zayıflama
+  ├── Yağ Yakıcılar (Termojenik)
+  ├── CLA
+  ├── L-Karnitin
+  ├── Diyet Barlar
+  └── Öğün Yerine Geçenler
+Spor Gıdaları & Atıştırmalık
+  ├── Protein Bar
+  ├── Protein Cookie
+  ├── Fıstık Ezmesi
+  ├── Granola & Müsli
+  ├── Pirinç Patlağı
+  ├── Şekersiz Çikolata
+  ├── Protein Chips
+  └── Spor İçecekleri
+Spor Aksesuarları
+  ├── Shaker & Matara
+  ├── Eldiven & Bilek Bandı
+  ├── Direnç Bandı
+  ├── Yoga Matı
+  ├── Pill Box & Saklama
+  └── Gym Çanta
+Giyim
+  ├── Erkek
+  │   ├── Tişört
+  │   ├── Atlet
+  │   ├── Şort
+  │   └── Tayt
+  ├── Kadın
+  │   ├── Tişört
+  │   ├── Büstiyer
+  │   ├── Tayt
+  │   └── Şort
+  └── Aksesuarlar (Şapka, Çorap)
+Özel Koleksiyonlar (admin panelden yönetilebilir)
+  ├── Haftanın Fırsatları
+  ├── Yeni Gelenler
+  ├── En Çok Satanlar
+  ├── Son Stoklar
+  └── Bundle/Paket Setler
+
+─────────────────────────────────
+📌 1.2 ANA SAYFA (Homepage)
+─────────────────────────────────
+SIRALAMA (yukarıdan aşağı):
+
+1) HERO SLIDER (Tam genişlik):
+   - Otomatik kayan banner slider (3-5 slide)
+   - Her slide: Arka plan görsel/video + başlık + açıklama + CTA butonu
+   - Admin panelden tam yönetilebilir (görsel, metin, link, sıralama, aktif/pasif)
+   - Dot navigasyon + ok butonları + swipe desteği
+   - Paralax efekti
+   - Mobilde farklı görsel yüklenebilir (responsive banner)
+
+2) ÜST AVANTAJ ŞERİDİ (Trust Bar):
+   - 4 ikon kartı yan yana (kaydırılabilir mobilde):
+     → 🚚 Aynı Gün Kargo
+     → ✅ %100 Orijinal Ürün
+     → 🔄 14 Gün İade Garantisi
+     → 💳 Güvenli Ödeme (256-bit SSL)
+   - Admin panelden düzenlenebilir
+
+3) KATEGORİ VİTRİNİ:
+   - Yatay kaydırılabilir (carousel) dairesel veya kare kategori ikonları
+   - Her birinde kategori görseli + ismi + ürün sayısı
+   - Hover'da scale + glow efekti
+   - Admin panelden sıralama ve görsel değiştirilebilir
+
+4) FLAŞ KAMPANYA / GERİ SAYIM:
+   - Büyük banner alanı
+   - Geri sayım timer'ı (gün:saat:dakika:saniye)
+   - İndirimli ürünler carousel
+   - Admin panelden kampanya başlangıç/bitiş tarihi, ürün seçimi
+
+5) ÖNE ÇIKAN ÜRÜNLER / EDİTÖR SEÇİMİ:
+   - Tab yapısı: "Öne Çıkanlar | Yeni Gelenler | En Çok Satanlar | İndirimde"
+   - Her tab'da 8-12 ürün kartı (grid veya carousel)
+   - Admin panelden hangi ürünlerin gösterileceği seçilebilir
+
+6) BÜYÜK KAMPANYA BANNERLARI (2'li veya 3'lü grid):
+   - Yan yana 2-3 tıklanabilir banner
+   - Admin panelden yönetilebilir (görsel, link, sıralama)
+   - Hover'da zoom efekti
+
+7) MARKA VİTRİNİ (Markalar bölümü):
+   - Logo carousel (otomatik kayan)
+   - Optimum Nutrition, MuscleTech, BSN, Dymatize, MyProtein, Hardline,
+     Scitec, Kevin Levrone, BioTech USA, Rule1, Nutrex, GAT, Cellucor,
+     Universal, MusclePharm, Now Foods, Solgar vb.
+   - Tıklanınca o markanın ürünleri listelenir
+   - Admin panelden marka ekleme/çıkarma
+
+8) HEDEF KİTLEYE GÖRE ÖNERİ:
+   - "Hedefinize Göre Seçin" bölümü
+   - Kartlar: Kas Kazanımı 💪 | Yağ Yakımı 🔥 | Güç Artışı ⚡ |
+     Sağlıklı Yaşam 🌿 | Dayanıklılık 🏃 | Toparlanma 🧘
+   - Her kart tıklanınca ilgili ürün koleksiyonuna yönlendir
+
+9) EN ÇOK SATANLAR HAFTASI (supplementler.com tarzı):
+   - 1-2-3 sıralamalı büyük kartlar
+   - Her kartta: Sıra no + görsel + isim + puan + fiyat + sepete ekle
+
+10) BİLGİLENDİRİCİ BÖLÜM (myprotein.com tarzı):
+    - "Hangi Proteini Seçmeliyim?" interaktif quiz/rehber
+    - Sorulara göre ürün önerisi (basit wizard formu)
+    - Veya kategori bazlı bilgilendirme kartları
+
+11) BLOG / MAKALE ÖNİZLEME:
+    - Son 3-4 blog yazısı kartları
+    - Görsel + başlık + kısa özet + yazar + tarih + okuma süresi
+    - "Tüm Yazıları Gör" butonu
+
+12) SOSYAL KANIT (Social Proof):
+    - Gerçek müşteri yorumları carousel
+    - Yıldız puanı + yorum metni + müşteri adı + profil görseli
+    - Instagram feed entegrasyonu (son paylaşımlar grid)
+    - "10.000+ Mutlu Müşteri" sayaç animasyonu
+
+13) WHATSAPP İLETİŞİM BUTONU:
+    - Sağ alt köşe sabit (floating)
+    - Tıklayınca WhatsApp'a yönlendirme
+    - Admin panelden numara değiştirilebilir
+
+14) SON GÖRÜNTÜLENEN ÜRÜNLER:
+    - Kullanıcı giriş yapmışsa DB'den, yapmamışsa localStorage'dan
+    - Yatay kaydırılabilir ürün kartları
+
+15) EMAIL ABONE OLMA (Newsletter):
+    - Büyük banner/bölüm
+    - "Fırsatları Kaçırma! %10 İndirim Kuponunu Kap"
+    - Email input + abone ol butonu
+    - Başarılı kayıtta kupon kodu gösterimi
+
+16) FOOTER:
+    - 5 sütun:
+      → Kurumsal: Hakkımızda, Kariyer, Basında Biz, İletişim
+      → Müşteri Hizmetleri: SSS, İade/Değişim, Kargo Bilgisi, Sipariş Takibi
+      → Hesabım: Siparişlerim, Favorilerim, Adreslerim, Kuponlarım
+      → Kategoriler: Ana kategori linkleri
+      → İletişim: Adres, Telefon, Email, Harita
+    - Ödeme yöntemleri logoları (Visa, Master, Troy, Amex, Havale)
+    - Kargo firmaları logoları (Yurtiçi, Aras, MNG, Sürat, PTT)
+    - Güvenlik sertifikaları (SSL, 3D Secure)
+    - Sosyal medya ikonları (büyük)
+    - Alt kısım: Copyright + Gizlilik Politikası + KVKK + Kullanım Şartları +
+      Çerez Politikası
+    - "Yukarı Çık" butonu (smooth scroll)
+
+─────────────────────────────────
+📌 1.3 ÜRÜN LİSTELEME SAYFASI
+─────────────────────────────────
+SOL SIDEBAR FİLTRELER:
+- Kategori ağacı (açılır/kapanır checkbox)
+- Fiyat aralığı (çift slider + min-max input)
+- Marka (checkbox listesi + marka içi arama)
+- Aroma/Tat (Çikolata, Vanilya, Çilek, Muz, Karamel, Kahve, vb.)
+- Ağırlık/Boyut (250g, 500g, 1kg, 2kg, 2.27kg, 4.5kg, vb.)
+- Puan (5 yıldız, 4+, 3+, vb.)
+- Fiyat durumu (İndirimde, Normal)
+- Stok durumu (Stokta Var, Tükenmek Üzere)
+- Yeni Ürünler toggle
+- Vegan/Glutensiz/Laktozsuz filtresi
+- Şeker içermez filtresi
+- Menşei ülke filtresi
+- Seçili filtreler üstte etiket olarak gösterilsin, tek tek veya toplu kaldırma
+- Filtre değiştiğinde URL güncellenmeli (SEO-friendly URL)
+- Mobilde filtreler bottom sheet veya slide drawer olarak açılsın
+
+SIRALAMA SEÇENEKLERİ:
+- Önerilen (varsayılan)
+- Fiyat: Düşükten Yükseğe
+- Fiyat: Yüksekten Düşüğe
+- En Yeniler
+- En Çok Satanlar
+- En Çok Değerlendirilen
+- Puan: Yüksekten Düşüğe
+- İndirim oranı: Yüksekten Düşüğe
+
+GÖRÜNÜM:
+- Grid (2/3/4 sütun toggle) ve Liste görünümü toggle
+- Sayfa başına ürün sayısı seçimi (12, 24, 48, 96)
+- "Toplam X ürün bulundu" bilgisi
+- Pagination (sayfa numaları + önceki/sonraki)
+- Veya Infinite scroll seçeneği
+- Ürün karşılaştırma: Seçili ürünler alt barda görünsün, karşılaştır butonu
+
+ÜRÜN KARTI:
+- Ürün görseli (hover'da 2. görsel veya quick view)
+- Ürün adı (max 2 satır, üstte marka adı küçük yazıyla)
+- Yıldız puanı + değerlendirme sayısı
+- Fiyat: İndirimli ise eski fiyat üstü çizili + yeni fiyat + indirim yüzdesi badge
+- Aroma/tat seçenekleri renk daireleri veya etiketler
+- Ağırlık seçenekleri (500g, 1kg, 2.27kg)
+- "Sepete Ekle" butonu (hover'da görünsün veya daima)
+- Favori kalp ikonu (sağ üst köşe)
+- Karşılaştırmaya ekle ikonu
+- Quick View (göz ikonu - modal açar)
+- Stok durumu badge (Stokta / Tükenmek Üzere / Tükendi)
+- "Yeni" veya "Çok Satan" veya "İndirim" badge'leri
+- Taksit bilgisi küçük yazı ("6 taksitle XX₺")
+- Hover'da ürün kartı hafif yükselsin (elevation)
+- Sepete ekleme animasyonu (ürün sepete uçar efekti)
+
+─────────────────────────────────
+📌 1.4 ÜRÜN DETAY SAYFASI
+─────────────────────────────────
+ÜST KISIM (2 sütun):
+
+SOL (Görsel Alanı):
+- Ana büyük görsel + altında thumbnail galerisi
+- Görsel üzerinde zoom (hover ile büyüteç veya lightbox)
+- 360° görünüm desteği (opsiyonel)
+- Video tab'ı (ürün tanıtım videosu)
+- Badge'ler görsel üzerinde: İndirim %, Yeni, Çok Satan
+- Mobilde swipe ile görsel değiştirme + pinch zoom
+
+SAĞ (Bilgi Alanı):
+- Breadcrumb: Anasayfa > Protein > Whey Protein > Ürün Adı
+- Marka adı (tıklanabilir - marka sayfasına yönlendir)
+- Ürün başlığı (H1)
+- SKU / Ürün kodu
+- Yıldız puanı + değerlendirme sayısı (tıklanınca yorumlara scroll)
+- Fiyat: Eski fiyat üstü çizili + yeni fiyat büyük + indirim yüzdesi + KDV dahil notu
+- Taksit bilgisi (tıklanınca taksit tablosu modal)
+- Kazanılacak puan bilgisi ("Bu üründen 45 puan kazanırsınız")
+- Kısa açıklama (2-3 satır)
+- Varyant seçimleri:
+  → Aroma/Tat: Görsel + isimli butonlar (seçili olan vurgulanır)
+  → Boyut/Ağırlık: Butonlar (fiyat farklılıklarıyla)
+  → Her varyant kombinasyonunun ayrı stok takibi
+- Adet seçici (- 1 + butonları)
+- "Sepete Ekle" büyük buton (neon yeşil, hover animasyonu)
+- "Hemen Al" butonu (direkt ödeme sayfasına)
+- "Favorilere Ekle" butonu
+- "Karşılaştırmaya Ekle" butonu
+- Paylaşım butonları (WhatsApp, Twitter, Facebook, Link kopyala)
+- Stok durumu gösterge çubuğu ("Son 5 adet!" uyarısı)
+- Tahmini kargo süresi ("Bugün sipariş ver, X tarihinde teslim")
+- Kargo ücreti hesaplama (adrese göre)
+- Güven rozetleri: Orijinal ürün ✓, Hızlı kargo ✓, Kolay iade ✓
+
+ALT KISIM (Tab yapısı):
+
+TAB 1 - ÜRÜN AÇIKLAMASI:
+- Zengin metin editöründen gelen HTML içerik
+- Ürün tanıtım görselleri
+- Kullanım önerisi
+- Uyarılar
+
+TAB 2 - BESİN DEĞERLERİ:
+- Tablo formatında: Porsiyon başına değerler
+  → Kalori, Protein, Karbonhidrat, Yağ, Lif, Şeker, Sodyum vb.
+- İçindekiler listesi
+- Alerjen bilgileri (Süt, Soya, Gluten, vb. ikonlu)
+- Sertifikalar (Helal, GMP, ISO, Informed Sport vb.)
+
+TAB 3 - DEĞERLER & YORUMLAR:
+- Ortalama puan (büyük yıldız gösterimi)
+- Puan dağılımı çubuk grafik (5 yıldız: %60, 4 yıldız: %25, vb.)
+- Toplam yorum sayısı
+- Yorum filtreleme: En yeniler, En yüksek puan, En düşük puan, Fotoğraflı
+- Her yorum kartı:
+  → Kullanıcı adı + avatar
+  → Puan yıldızları
+  → Yorum başlığı + metin
+  → Yorum tarihi
+  → Fotoğraf yükleme (kullanıcı görselleri)
+  → Beğen/beğenme butonları
+  → "Bu yorum faydalı mıydı?" Evet/Hayır
+  → Admin yanıtı (mağaza cevabı)
+  → Doğrulanmış alışveriş badge'i
+- Yorum yazma formu:
+  → Puan seçimi (yıldız tıklama)
+  → Başlık
+  → Yorum metni
+  → Fotoğraf/video yükleme (max 5)
+  → "Bu ürünü tavsiye eder misiniz?" Evet/Hayır
+  → Sadece satın alan kullanıcılar yazabilsin
+
+TAB 4 - SIKÇA SORULAN SORULAR:
+- Ürüne özel SSS (akordeon)
+- "Soru sor" butonu
+- Kullanıcılar soru sorabilsin, admin cevaplayabilsin
+- Diğer kullanıcılar soruyu beğenebilsin
+
+TAB 5 - TAKSİT SEÇENEKLERİ:
+- Banka bazlı taksit tablosu
+- Her banka logosu + taksit sayısı + aylık tutar
+
+ÜRÜN DETAY SAYFASI ALT BÖLÜMLERİ:
+- "Bu Ürünle Birlikte Alınanlar" (Frequently Bought Together)
+  → 2-3 ürün önerisi + toplam fiyat + hepsini sepete ekle butonu
+- "Benzer Ürünler" carousel
+- "Bu Ürüne Bakanlar Bunlara da Baktı" carousel
+- "Aynı Markadan Diğer Ürünler" carousel
+- Son görüntülenen ürünler
+
+─────────────────────────────────
+📌 1.5 SEPET SAYFASI
+─────────────────────────────────
+- Ürün listesi tablo/kart formatında:
+  → Ürün görseli + isim + varyant bilgisi (aroma, boyut)
+  → Birim fiyat
+  → Adet (- 1 + artır/azalt) - anlık güncelleme
+  → Toplam (adet x birim fiyat)
+  → Kaldır butonu (silme onay modalı)
+  → Favorilere taşı seçeneği
+  → Stok uyarısı (stok azsa "Son 3 adet!" uyarı)
+- Kupon kodu girişi (input + uygula butonu + başarı/hata mesajı)
+- Sepet özeti sidebar:
+  → Ara toplam
+  → İndirim tutarı (varsa)
+  → Kupon indirimi (varsa)
+  → Kargo ücreti (ücretsiz kargo barı: "XX₺ daha ekle, kargo bedava!")
+  → KDV bilgisi
+  → Kazanılacak puan
+  → GENEL TOPLAM (büyük, vurgulu)
+  → "Ödemeye Geç" büyük buton
+  → Güven rozetleri
+  → Kabul edilen ödeme yöntemleri logoları
+- "Alışverişe Devam Et" linki
+- Sepet boşsa:
+  → İllüstrasyon/animasyon
+  → "Sepetiniz boş" mesajı
+  → "Alışverişe Başla" butonu
+  → Popüler ürün önerileri
+- Cross-sell: "Bunları da sepetine ekle" önerileri
+- Mini sepet (header'daki hover/click dropdown):
+  → Ürün görselleri küçük + isim + adet + fiyat
+  → "Sepeti Gör" + "Ödemeye Geç" butonları
+
+─────────────────────────────────
+📌 1.6 ÖDEME SAYFASI (Checkout)
+─────────────────────────────────
+ADIM ADIM (Stepper):
+
+ADIM 1 - GİRİŞ/KAYIT:
+- Misafir olarak devam et seçeneği
+- Giriş yap formu
+- Hızlı kayıt (isim, email, telefon, şifre)
+- Google/Facebook ile giriş
+
+ADIM 2 - TESLİMAT BİLGİLERİ:
+- Kayıtlı adresler listesi (seçilebilir kartlar)
+- Yeni adres ekle formu:
+  → Ad Soyad
+  → Telefon
+  → İl (dropdown)
+  → İlçe (il seçimine göre dinamik)
+  → Mahalle/Semt
+  → Açık adres (textarea)
+  → Adres başlığı (Ev, İş, Diğer)
+  → Fatura adresi farklı mı? checkbox
+  → Kurumsal fatura checkbox → Firma adı, Vergi Dairesi, Vergi No
+- Kargo firması seçimi (varsa birden fazla seçenek)
+- Teslimat notu (textarea)
+- Tahmini teslimat tarihi gösterimi
+
+ADIM 3 - ÖDEME:
+- Ödeme yöntemi seçimi:
+  → Kredi/Banka Kartı (form):
+    • Kart numarası (otomatik formatlama, kart tipi logo tanıma)
+    • Son kullanma tarihi (MM/YY)
+    • CVV
+    • Kart üzerindeki isim
+    • "Kartımı kaydet" checkbox
+    • Kayıtlı kartlar listesi
+    • 3D Secure bilgilendirme
+    • Taksit seçenekleri tablo (2-3-6-9-12 taksit seçimi)
+  → Havale/EFT:
+    • Banka hesap bilgileri listesi
+    • Havale indirimi gösterimi (%3-5)
+  → Kapıda ödeme (admin panelden açılıp kapatılabilir):
+    • Ek ücret bilgisi
+    • Nakit veya kart seçimi
+  → Kayıtlı bakiye/puan ile ödeme
+- Sipariş özeti sidebar:
+  → Ürünler listesi (küçük görsel + isim + adet + fiyat)
+  → Ara toplam, indirim, kupon, kargo, toplam
+  → Kullanılacak puan input'u
+- Sözleşme onayları:
+  → ☐ Mesafeli satış sözleşmesini okudum onaylıyorum (link ile açılsın)
+  → ☐ Ön bilgilendirme formunu okudum onaylıyorum
+  → ☐ KVKK aydınlatma metni
+- "SİPARİŞİ TAMAMLA" büyük buton
+- Güvenlik bilgilendirmesi: "256-bit SSL ile korunmaktadır"
+
+ADIM 4 - SİPARİŞ ONAY:
+- ✅ Başarılı animasyonu (confetti efekti)
+- Sipariş numarası
+- Sipariş özeti
+- Tahmini teslimat tarihi
+- "Siparişlerimi Takip Et" butonu
+- "Alışverişe Devam Et" butonu
+- Email/SMS ile onay gönderildi bilgisi
+- Sosyal medyada paylaş butonları
+
+─────────────────────────────────
+📌 1.7 KULLANICI PANELİ (/hesabim)
+─────────────────────────────────
+SOL MENÜ:
+- Dashboard (Özet)
+- Siparişlerim
+- Adreslerim
+- Favorilerim
+- Değerlendirmelerim
+- Kuponlarım
+- Puan Hareketlerim
+- Bildirimlerim
+- Hesap Bilgilerim
+- Şifre Değiştir
+- Kayıtlı Kartlarım
+- Çıkış Yap
+
+DASHBOARD:
+- Hoş geldin mesajı + kullanıcı adı
+- Son siparişler (son 3)
+- Aktif kupon sayısı
+- Toplam puan bakiyesi
+- Favori ürün sayısı
+- Bekleyen değerlendirmeler
+
+SİPARİŞLERİM:
+- Sipariş listesi (tablo):
+  → Sipariş no, tarih, durum, toplam tutar, detay butonu
+  → Durum badge'leri renkli: Onay Bekliyor (sarı), Hazırlanıyor (mavi),
+    Kargoya Verildi (turuncu), Teslim Edildi (yeşil), İptal (kırmızı),
+    İade (mor)
+- Sipariş detay sayfası:
+  → Sipariş durumu timeline (adım adım progress bar)
+  → Kargo takip numarası + kargo firması linki
+  → Ürün listesi
+  → Teslimat adresi
+  → Fatura bilgisi
+  → Ödeme bilgisi
+  → E-fatura/irsaliye indirme (PDF)
+  → "Tekrar Sipariş Ver" butonu (tüm ürünleri sepete ekle)
+  → "Sipariş İptali" butonu (durum uygunsa)
+  → "İade Talebi Oluştur" butonu
+    → İade sebebi seçimi
+    → Ürün seçimi (hangilerini iade?)
+    → Açıklama
+    → Fotoğraf yükleme
+  → "Ürünü Değerlendir" butonu (teslim edilmişse)
+
+ADRESLERİM:
+- Adres kartları grid
+- Varsayılan adres işareti
+- Ekle / Düzenle / Sil
+- Max 10 adres
+
+FAVORİLERİM:
+- Ürün kartları grid (sepet sayfası ürün kartı gibi)
+- "Sepete Ekle" butonu her üründe
+- "Tümünü Sepete Ekle" butonu
+- Favoriden kaldır
+- Stokta yoksa bildirim iste
+
+DEĞERLENDİRMELERİM:
+- Yazdığım yorumlar listesi
+- Bekleyen değerlendirmeler (satın alıp henüz yorum yapmadıklarım)
+
+KUPONLARIM:
+- Aktif kuponlar (kod + açıklama + son kullanma tarihi + minimum tutar şartı)
+- Kullanılmış kuponlar
+- Süresi dolmuş kuponlar
+- Kupon kodu ile ekleme
+
+PUAN HAREKETLERİM:
+- Toplam puan bakiyesi
+- Puan kazanma geçmişi (sipariş bazlı)
+- Puan harcama geçmişi
+- "1 Puan = 0.01₺" bilgilendirme
+
+─────────────────────────────────
+📌 1.8 DİĞER SAYFALAR
+─────────────────────────────────
+
+📄 MARKA SAYFASI (/markalar):
+- Tüm markalar A-Z listesi
+- Harf filtresi (A B C D ... Z)
+- Marka arama
+- Marka logosu + isim + ürün sayısı
+- Tıklayınca marka detay sayfası:
+  → Marka hakkında bilgi + logo + banner
+  → O markaya ait tüm ürünler (filtreleme ve sıralama ile)
+
+📄 KAMPANYALAR SAYFASI (/kampanyalar):
+- Aktif kampanya bannerları
+- Her kampanyaya tıklayınca kampanya ürünleri listelenir
+- Geri sayım timer'ları kampanya kartlarında
+
+📄 BLOG SAYFASI (/blog):
+- Blog listesi (grid kartlar):
+  → Kapak görseli + kategori badge + başlık + özet + yazar + tarih + okuma süresi
+- Blog kategorileri sidebar: Beslenme, Antrenman, Supplement Rehberi,
+  Tarifler, Sağlık, Motivasyon
+- Etiket bulutu
+- Popüler yazılar
+- Blog detay sayfası:
+  → H1 başlık
+  → Kapak görseli
+  → Yazar bilgisi + avatar + tarih + okuma süresi
+  → Zengin metin içerik (görsel, video, alıntı, liste, tablo destekli)
+  → İlgili ürünler bölümü (yazıda bahsedilen ürünler)
+  → Paylaşım butonları
+  → Önceki/Sonraki yazı navigasyonu
+  → İlgili yazılar önerisi
+  → Yorum sistemi (kullanıcılar yorum yapabilir)
+  → SEO: Schema markup, Open Graph, meta tags
+
+📄 HAKKIMIZDA (/hakkimizda):
+- Firma hikayesi, misyon/vizyon
+- Rakamlarla biz (ürün sayısı, müşteri, sipariş, yıl)
+- Ekip tanıtımı (opsiyonel)
+- Sertifikalar ve ödüller
+
+📄 İLETİŞİM (/iletisim):
+- İletişim formu (ad, email, konu, mesaj)
+- Adres + harita (Google Maps embed)
+- Telefon, email, WhatsApp
+- Çalışma saatleri
+- Sosyal medya linkleri
+
+📄 SSS (/sss):
+- Kategorili SSS (Sipariş, Kargo, İade, Ödeme, Ürünler, Hesap)
+- Akordeon açılır/kapanır
+- Arama fonksiyonu
+- "Cevap bulamadım" → İletişim formuna yönlendirme
+
+📄 YARDIM MERKEZİ (/yardim):
+- Sipariş nasıl verilir (adım adım görsellerle)
+- Kargo takibi nasıl yapılır
+- İade/değişim prosedürü
+- Ödeme yöntemleri bilgisi
+- Puan sistemi nasıl çalışır
+- Kupon nasıl kullanılır
+
+📄 SİPARİŞ TAKİP (/siparis-takip):
+- Giriş yapmadan sipariş no + email ile sorgulama
+- Sipariş durumu timeline gösterimi
+
+📄 KARŞILAŞTIRMA SAYFASI (/karsilastir):
+- 2-4 ürün yan yana karşılaştırma tablosu
+- Özellikler: Fiyat, protein oranı, porsiyon sayısı, kalori, aroma çeşitleri,
+  puan, marka, ağırlık, fiyat/servis
+- Farklılıklar vurgulansın (highlight)
+- "Sepete Ekle" butonları
+
+📄 KURUMSAL SAYFALAR:
+- Gizlilik Politikası
+- KVKK Aydınlatma Metni
+- Çerez Politikası
+- Mesafeli Satış Sözleşmesi
+- İade ve Değişim Koşulları
+- Kullanım Şartları
+- Garanti Koşulları
+- Teslimat Koşulları
+
+📄 GİRİŞ / KAYIT:
+GİRİŞ:
+- Email + şifre
+- Beni hatırla checkbox
+- Şifremi unuttum linki
+- Google ile giriş
+- Facebook ile giriş
+- Kayıt ol linki
+
+KAYIT:
+- Ad Soyad
+- Email
+- Telefon
+- Şifre + şifre tekrar (güçlük göstergesi)
+- Doğum tarihi (opsiyonel - doğum günü kuponu için)
+- Cinsiyet (opsiyonel)
+- Sözleşme onayları
+- KVKK onayı
+- E-bülten onayı
+- Email doğrulama (kayıt sonrası doğrulama maili)
+- SMS doğrulama (opsiyonel)
+
+ŞİFREMİ UNUTTUM:
+- Email girişi
+- Doğrulama kodu gönderimi
+- Yeni şifre belirleme
+
+─────────────────────────────────
+📌 1.9 ÖZEL ÖZELLİKLER (FRONTEND)
+─────────────────────────────────
+
+🔔 BİLDİRİM SİSTEMİ:
+- Push notification altyapısı
+- Uygulama içi bildirimler (zil ikonu + dropdown)
+- Bildirim tipleri: Sipariş durumu, kampanya, stok bildirimi, puan kazanımı
+- Okundu/okunmadı durumu
+
+📊 ÜRÜFİYAT ALARMI:
+- Ürün detayda "Fiyat düşünce haber ver" butonu
+- Email ve/veya push notification ile bilgilendirme
+
+🔄 SON GÖRÜNTÜLENEN:
+- Son 20 ürün LocalStorage + DB (giriş yapmışsa)
+- Her sayfanın altında carousel
+
+💬 CANLI DESTEK (Live Chat):
+- Sağ alt köşe chat widget
+- Online/offline durumu
+- Önceden tanımlı hızlı sorular
+- Admin panelden cevaplama
+- Chat geçmişi
+
+🎯 KİŞİSELLEŞTİRME:
+- "Size Özel" ürün önerileri (satın alma geçmişine göre)
+- "Daha önce satın aldıklarınız" bölümü
+- İlgi alanlarına göre anasayfa özelleştirme
+
+🌐 ÇOK DİLLİ ALTYAPI:
+- TR (varsayılan) + EN
+- i18n altyapısı (react-i18next)
+- URL yapısı: /tr/urun/... veya /en/product/...
+
+📱 PWA:
+- Service Worker
+- Offline modu (temel sayfalara erişim)
+- Anasayfaya ekleme prompt'u
+- Splash screen
+
+=====================================
+📐 BÖLÜM 2: BACKEND (API)
+=====================================
+
+📁 KLASÖR YAPISI:
+backend/
+├── config/
+│   ├── db.js (MongoDB bağlantısı)
+│   ├── cloudinary.js
+│   ├── email.js (Nodemailer/SMTP)
+│   ├── payment.js (İyzico/PayTR config)
+│   └── cache.js (Redis config)
+├── models/
+│   ├── User.js
+│   ├── Product.js
+│   ├── Category.js
+│   ├── Brand.js
+│   ├── Order.js
+│   ├── Review.js
+│   ├── Cart.js
+│   ├── Wishlist.js
+│   ├── Coupon.js
+│   ├── Address.js
+│   ├── Banner.js
+│   ├── Blog.js
+│   ├── BlogCategory.js
+│   ├── Faq.js
+│   ├── Page.js (statik sayfalar)
+│   ├── Notification.js
+│   ├── Newsletter.js
+│   ├── ContactMessage.js
+│   ├── Setting.js (genel ayarlar)
+│   ├── Campaign.js
+│   ├── PointTransaction.js
+│   ├── ReturnRequest.js
+│   ├── ChatMessage.js
+│   ├── PriceAlert.js
+│   ├── ProductQuestion.js
+│   ├── SeoMeta.js
+│   ├── Announcement.js
+│   ├── Menu.js
+│   ├── Slider.js
+│   └── CargoCompany.js
+├── routes/
+│   ├── auth.routes.js
+│   ├── user.routes.js
+│   ├── product.routes.js
+│   ├── category.routes.js
+│   ├── brand.routes.js
+│   ├── order.routes.js
+│   ├── review.routes.js
+│   ├── cart.routes.js
+│   ├── wishlist.routes.js
+│   ├── coupon.routes.js
+│   ├── address.routes.js
+│   ├── banner.routes.js
+│   ├── blog.routes.js
+│   ├── faq.routes.js
+│   ├── page.routes.js
+│   ├── notification.routes.js
+│   ├── newsletter.routes.js
+│   ├── contact.routes.js
+│   ├── setting.routes.js
+│   ├── campaign.routes.js
+│   ├── payment.routes.js
+│   ├── upload.routes.js
+│   ├── search.routes.js
+│   ├── report.routes.js
+│   ├── seo.routes.js
+│   └── admin.routes.js
+├── controllers/ (her route için controller)
+├── middleware/
+│   ├── auth.js (JWT doğrulama)
+│   ├── admin.js (admin yetkisi)
+│   ├── roleCheck.js (rol bazlı yetki)
+│   ├── upload.js (Multer)
+│   ├── rateLimiter.js
+│   ├── validator.js (express-validator)
+│   ├── errorHandler.js
+│   ├── logger.js (Morgan/Winston)
+│   └── cache.js (Redis cache middleware)
+├── utils/
+│   ├── generateToken.js
+│   ├── sendEmail.js
+│   ├── sendSMS.js
+│   ├── slugify.js
+│   ├── pagination.js
+│   ├── imageResize.js
+│   ├── generateSitemap.js
+│   ├── generateInvoice.js (PDF fatura)
+│   ├── calculateShipping.js
+│   ├── stockCheck.js
+│   └── helpers.js
+├── seeds/ (test verileri)
+│   ├── users.seed.js
+│   ├── products.seed.js
+│   ├── categories.seed.js
+│   └── brands.seed.js
+├── jobs/ (cron jobs)
+│   ├── checkPriceAlerts.js
+│   ├── sendAbandonedCartEmail.js
+│   ├── expireCoupons.js
+│   ├── updatePopularProducts.js
+│   └── generateReports.js
+├── server.js
+└── .env
+
+─────────────────────────────────
+📌 2.1 VERİTABANI MODELLERİ (DETAYLI)
+─────────────────────────────────
+
+USER MODELİ:
+{
+  firstName, lastName, email (unique), phone,
+  password (bcrypt hash), avatar,
+  role: enum ['customer', 'admin', 'moderator', 'editor'],
+  gender: enum ['male', 'female', 'other'],
+  birthDate,
+  isEmailVerified, isPhoneVerified, isActive, isBanned,
+  emailVerificationToken, emailVerificationExpire,
+  resetPasswordToken, resetPasswordExpire,
+  refreshToken,
+  loyaltyPoints: Number (default: 0),
+  totalSpent: Number,
+  orderCount: Number,
+  lastLogin, lastLoginIP,
+  addresses: [{ ref: 'Address' }],
+  newsletter: Boolean,
+  preferences: {
+    language, currency, notifications: {
+      email, sms, push, orderUpdates, campaigns, priceAlerts
+    }
+  },
+  socialLogins: {
+    googleId, facebookId
+  },
+  createdAt, updatedAt
+}
+
+PRODUCT MODELİ:
+{
+  name, slug (unique, auto-generated),
+  sku (unique),
+  barcode,
+  description (zengin metin HTML),
+  shortDescription,
+  category: { ref: 'Category' },
+  subCategory: { ref: 'Category' },
+  brand: { ref: 'Brand' },
+  images: [{
+    url, publicId, alt, order, isMain: Boolean
+  }],
+  video: { url, thumbnail },
+  variants: [{
+    flavor: String (aroma),
+    size: String (ağırlık/boyut),
+    sku: String,
+    barcode: String,
+    price: Number,
+    comparePrice: Number (eski fiyat),
+    costPrice: Number (maliyet),
+    stock: Number,
+    lowStockThreshold: Number,
+    weight: Number (gram - kargo hesabı için),
+    images: [{ url, publicId }],
+    isActive: Boolean
+  }],
+  // Eğer varyant yoksa:
+  price, comparePrice, costPrice, stock, lowStockThreshold,
+  nutritionFacts: {
+    servingSize, servingsPerContainer,
+    calories, protein, carbs, fat, fiber, sugar, sodium,
+    ingredients: String,
+    allergens: [String],
+    certifications: [String]
+  },
+  specifications: [{ key: String, value: String }],
+  tags: [String],
+  isActive, isFeatured, isNewArrival, isBestSeller,
+  isOnSale, isVegan, isGlutenFree, isLactoseFree, isSugarFree,
+  originCountry,
+  averageRating: Number,
+  reviewCount: Number,
+  soldCount: Number,
+  viewCount: Number,
+  favoriteCount: Number,
+  minOrderQuantity: Number (default: 1),
+  maxOrderQuantity: Number,
+  relatedProducts: [{ ref: 'Product' }],
+  frequentlyBoughtTogether: [{ ref: 'Product' }],
+  seo: {
+    metaTitle, metaDescription, metaKeywords,
+    canonicalUrl, ogImage, schema
+  },
+  shipping: {
+    freeShipping: Boolean,
+    weight, dimensions: { length, width, height }
+  },
+  taxRate: Number (default: 10 - KDV %),
+  pointsEarned: Number (kazanılacak puan),
+  publishDate, expiryDate,
+  createdBy: { ref: 'User' },
+  createdAt, updatedAt
+}
+
+CATEGORY MODELİ:
+{
+  name, slug, description,
+  parent: { ref: 'Category' } (null ise ana kategori),
+  ancestors: [{ ref: 'Category' }],
+  image: { url, publicId },
+  icon: String (icon class veya SVG),
+  bannerImage: { url, publicId },
+  order: Number (sıralama),
+  isActive: Boolean,
+  isFeatured: Boolean,
+  productCount: Number,
+  seo: { metaTitle, metaDescription, metaKeywords, canonicalUrl },
+  megaMenu: {
+    featuredProducts: [{ ref: 'Product' }],
+    bannerImage: { url, link }
+  },
+  filters: [{
+    name: String,
+    type: enum ['checkbox', 'range', 'color'],
+    options: [String]
+  }],
+  createdAt, updatedAt
+}
+
+BRAND MODELİ:
+{
+  name, slug,
+  logo: { url, publicId },
+  bannerImage: { url, publicId },
+  description,
+  website,
+  originCountry,
+  isActive, isFeatured,
+  order: Number,
+  productCount: Number,
+  seo: { metaTitle, metaDescription, metaKeywords },
+  createdAt, updatedAt
+}
+
+ORDER MODELİ:
+{
+  orderNumber (unique, auto-generated: #SP-100001),
+  user: { ref: 'User' },
+  items: [{
+    product: { ref: 'Product' },
+    name, image, variant: { flavor, size },
+    price, quantity, totalPrice, sku,
+    isReviewed: Boolean
+  }],
+  shippingAddress: {
+    fullName, phone, city, district, neighborhood,
+    address, zipCode, addressTitle
+  },
+  billingAddress: { ... },
+  isCorporateInvoice: Boolean,
+  corporateInfo: { companyName, taxOffice, taxNumber },
+  paymentMethod: enum ['credit_card', 'bank_transfer', 'cash_on_delivery'],
+  paymentDetails: {
+    cardLast4, installment, bankName,
+    transactionId, paymentGateway
+  },
+  isPaid: Boolean, paidAt,
+  status: enum [
+    'pending', 'confirmed', 'processing', 'shipped',
+    'out_for_delivery', 'delivered', 'cancelled',
+    'return_requested', 'returned', 'refunded'
+  ],
+  statusHistory: [{
+    status, date, note, updatedBy: { ref: 'User' }
+  }],
+  shippingCompany: String,
+  trackingNumber: String,
+  trackingUrl: String,
+  estimatedDelivery: Date,
+  deliveredAt: Date,
+  subtotal, discount, couponDiscount,
+  coupon: { ref: 'Coupon' },
+  shippingCost, taxAmount,
+  pointsUsed: Number,
+  pointsEarned: Number,
+  grandTotal,
+  notes: String (müşteri notu),
+  adminNotes: String (admin notu, müşteriye görünmez),
+  ipAddress, userAgent,
+  invoiceUrl: String (PDF link),
+  isGift: Boolean,
+  giftMessage: String,
+  createdAt, updatedAt
+}
+
+REVIEW MODELİ:
+{
+  product: { ref: 'Product' },
+  user: { ref: 'User' },
+  order: { ref: 'Order' },
+  rating: Number (1-5),
+  title, comment,
+  images: [{ url, publicId }],
+  isVerifiedPurchase: Boolean,
+  isRecommended: Boolean,
+  helpfulCount: Number,
+  notHelpfulCount: Number,
+  helpfulVotes: [{ user: ref, isHelpful: Boolean }],
+  adminReply: { comment, date, admin: ref },
+  status: enum ['pending', 'approved', 'rejected'],
+  rejectionReason: String,
+  createdAt, updatedAt
+}
+
+COUPON MODELİ:
+{
+  code (unique, uppercase),
+  description,
+  type: enum ['percentage', 'fixed_amount', 'free_shipping', 'buy_x_get_y'],
+  value: Number,
+  minOrderAmount: Number,
+  maxDiscountAmount: Number (yüzdelik kupon için üst limit),
+  startDate, endDate,
+  usageLimit: Number (toplam kullanım limiti),
+  usageLimitPerUser: Number (kullanıcı başı limit),
+  usedCount: Number,
+  usedBy: [{ user: ref, order: ref, date }],
+  applicableCategories: [{ ref: 'Category' }],
+  applicableBrands: [{ ref: 'Brand' }],
+  applicableProducts: [{ ref: 'Product' }],
+  excludedProducts: [{ ref: 'Product' }],
+  isActive: Boolean,
+  isPublic: Boolean (herkes görebilir mi),
+  isFirstOrderOnly: Boolean,
+  isNewsletter: Boolean,
+  createdBy: { ref: 'User' },
+  createdAt, updatedAt
+}
+
+CAMPAIGN MODELİ:
+{
+  name, slug, description,
+  type: enum ['flash_sale', 'seasonal', 'bundle', 'bogo', 'percentage', 'gift'],
+  bannerImage: { url, publicId, mobileUrl },
+  startDate, endDate,
+  discountType: enum ['percentage', 'fixed'],
+  discountValue: Number,
+  products: [{ ref: 'Product' }],
+  categories: [{ ref: 'Category' }],
+  brands: [{ ref: 'Brand' }],
+  isActive, isFeatured,
+  order: Number,
+  viewCount: Number,
+  seo: { metaTitle, metaDescription },
+  createdAt, updatedAt
+}
+
+BLOG MODELİ:
+{
+  title, slug, excerpt, content (HTML),
+  coverImage: { url, publicId, alt },
+  category: { ref: 'BlogCategory' },
+  tags: [String],
+  author: { ref: 'User' },
+  relatedProducts: [{ ref: 'Product' }],
+  isPublished: Boolean, publishDate,
+  viewCount: Number,
+  readTime: Number (dakika),
+  comments: [{
+    user: ref, comment, date,
+    isApproved: Boolean,
+    replies: [{ user: ref, comment, date }]
+  }],
+  seo: { metaTitle, metaDescription, metaKeywords, canonicalUrl, ogImage },
+  createdAt, updatedAt
+}
+
+SETTING MODELİ (tek doküman - singleton):
+{
+  siteName, siteDescription, logo, favicon,
+  contactEmail, contactPhone, whatsappNumber,
+  address,
+  socialMedia: { facebook, instagram, twitter, youtube, tiktok },
+  shipping: {
+    freeShippingThreshold: Number,
+    defaultShippingCost: Number,
+    expressShippingCost: Number
+  },
+  payment: {
+    isCreditCardActive, isBankTransferActive, isCashOnDeliveryActive,
+    cashOnDeliveryFee: Number,
+    bankAccounts: [{ bankName, iban, accountHolder, branch }],
+    bankTransferDiscount: Number (%)
+  },
+  loyalty: {
+    isActive: Boolean,
+    pointsPerCurrency: Number (ör: her 1₺ = 1 puan),
+    pointValue: Number (ör: 1 puan = 0.01₺),
+    welcomePoints: Number (yeni üye puanı)
+  },
+  maintenance: {
+    isActive: Boolean,
+    message: String
+  },
+  announcement: {
+    isActive: Boolean,
+    text: String,
+    bgColor: String,
+    textColor: String,
+    link: String
+  },
+  seo: {
+    defaultMetaTitle, defaultMetaDescription,
+    defaultMetaKeywords, googleAnalyticsId,
+    googleTagManagerId, facebookPixelId,
+    robots: String
+  },
+  smtp: {
+    host, port, user, password, from
+  },
+  currency: { code: 'TRY', symbol: '₺' },
+  taxRate: Number,
+  orderPrefix: String (ör: 'SP'),
+  minOrderAmount: Number,
+  maxOrderAmount: Number,
+  createdAt, updatedAt
+}
+
+NEWSLETTER MODELİ:
+{
+  email (unique), isActive, subscribedAt, unsubscribedAt,
+  source: enum ['website', 'checkout', 'popup'],
+  couponSent: Boolean, couponCode: String
+}
+
+NOTIFICATION MODELİ:
+{
+  user: { ref: 'User' },
+  type: enum ['order', 'campaign', 'price_alert', 'stock_alert',
+              'review', 'points', 'system', 'coupon'],
+  title, message,
+  link: String,
+  image: String,
+  isRead: Boolean,
+  createdAt
+}
+
+CONTACT MESSAGE MODELİ:
+{
+  name, email, phone, subject, message,
+  status: enum ['new', 'read', 'replied', 'closed'],
+  adminReply: String,
+  repliedAt, repliedBy: { ref: 'User' },
+  createdAt
+}
+
+PRICE ALERT MODELİ:
+{
+  user: { ref: 'User' },
+  product: { ref: 'Product' },
+  variant: { flavor, size },
+  targetPrice: Number,
+  currentPrice: Number,
+  isActive: Boolean,
+  isNotified: Boolean,
+  notifiedAt,
+  createdAt
+}
+
+PRODUCT QUESTION MODELİ:
+{
+  product: { ref: 'Product' },
+  user: { ref: 'User' },
+  question: String,
+  answer: String,
+  answeredBy: { ref: 'User' },
+  answeredAt,
+  likeCount: Number,
+  likes: [{ ref: 'User' }],
+  isApproved: Boolean,
+  createdAt
+}
+
+RETURN REQUEST MODELİ:
+{
+  order: { ref: 'Order' },
+  user: { ref: 'User' },
+  items: [{
+    product: ref, variant, quantity, reason
+  }],
+  reason: enum ['defective', 'wrong_product', 'not_as_described',
+                'changed_mind', 'other'],
+  description: String,
+  images: [{ url, publicId }],
+  status: enum ['pending', 'approved', 'rejected', 'received',
+                'refunded'],
+  adminNotes: String,
+  refundAmount: Number,
+  refundMethod: enum ['original_payment', 'store_credit', 'bank_transfer'],
+  trackingNumber: String (iade kargo),
+  statusHistory: [{ status, date, note }],
+  createdAt, updatedAt
+}
+
+─────────────────────────────────
+📌 2.2 API ENDPOINTLARI
+─────────────────────────────────
+
+AUTH:
+POST   /api/auth/register
+POST   /api/auth/login
+POST   /api/auth/logout
+POST   /api/auth/refresh-token
+POST   /api/auth/forgot-password
+POST   /api/auth/reset-password/:token
+POST   /api/auth/verify-email/:token
+POST   /api/auth/google
+POST   /api/auth/facebook
+GET    /api/auth/me
+
+USERS:
+GET    /api/users/profile
+PUT    /api/users/profile
+PUT    /api/users/change-password
+PUT    /api/users/avatar
+PUT    /api/users/preferences
+GET    /api/users/notifications
+PUT    /api/users/notifications/:id/read
+DELETE /api/users/account (hesap silme)
+
+PRODUCTS:
+GET    /api/products (filtreleme, sıralama, sayfalama, arama)
+GET    /api/products/:slug
+GET    /api/products/:id/related
+GET    /api/products/:id/frequently-bought
+GET    /api/products/search?q=... (autocomplete)
+GET    /api/products/popular
+GET    /api/products/new-arrivals
+GET    /api/products/best-sellers
+GET    /api/products/on-sale
+GET    /api/products/compare?ids=id1,id2,id3
+
+CATEGORIES:
+GET    /api/categories (ağaç yapısında)
+GET    /api/categories/:slug
+GET    /api/categories/:slug/products
+
+BRANDS:
+GET    /api/brands
+GET    /api/brands/:slug
+GET    /api/brands/:slug/products
+
+REVIEWS:
+GET    /api/reviews/product/:productId
+POST   /api/reviews
+PUT    /api/reviews/:id
+DELETE /api/reviews/:id
+POST   /api/reviews/:id/helpful
+GET    /api/reviews/my-reviews
+
+CART:
+GET    /api/cart
+POST   /api/cart/add
+PUT    /api/cart/update/:itemId
+DELETE /api/cart/remove/:itemId
+DELETE /api/cart/clear
+POST   /api/cart/apply-coupon
+DELETE /api/cart/remove-coupon
+
+WISHLIST:
+GET    /api/wishlist
+POST   /api/wishlist/toggle/:productId
+DELETE /api/wishlist/clear
+
+ADDRESSES:
+GET    /api/addresses
+POST   /api/addresses
+PUT    /api/addresses/:id
+DELETE /api/addresses/:id
+PUT    /api/addresses/:id/default
+
+ORDERS:
+POST   /api/orders
+GET    /api/orders
+GET    /api/orders/:id
+PUT    /api/orders/:id/cancel
+POST   /api/orders/:id/reorder
+GET    /api/orders/track/:orderNumber
+
+COUPONS:
+POST   /api/coupons/validate
+GET    /api/coupons/my-coupons
+POST   /api/coupons/redeem (kupon kodu ile ekleme)
+
+PAYMENT:
+POST   /api/payment/initialize (İyzico/PayTR)
+POST   /api/payment/callback
+GET    /api/payment/installments/:binNumber
+
+RETURNS:
+POST   /api/returns
+GET    /api/returns
+GET    /api/returns/:id
+
+BLOG:
+GET    /api/blog
+GET    /api/blog/:slug
+GET    /api/blog/categories
+POST   /api/blog/:id/comment
+
+FAQ:
+GET    /api/faq
+GET    /api/faq/:categorySlug
+
+NEWSLETTER:
+POST   /api/newsletter/subscribe
+POST   /api/newsletter/unsubscribe
+
+CONTACT:
+POST   /api/contact
+
+PRICE ALERT:
+POST   /api/price-alerts
+GET    /api/price-alerts
+DELETE /api/price-alerts/:id
+
+PRODUCT QUESTIONS:
+GET    /api/questions/product/:productId
+POST   /api/questions
+POST   /api/questions/:id/like
+
+SEARCH:
+GET    /api/search?q=&category=&brand=&minPrice=&maxPrice=&sort=&page=
+GET    /api/search/suggestions?q=
+
+SETTINGS (public):
+GET    /api/settings/public
+
+PAGES:
+GET    /api/pages/:slug
+
+SITEMAP:
+GET    /api/sitemap.xml
+
+─────────────────────────────────
+📌 2.3 ADMIN API ENDPOINTLARI
+─────────────────────────────────
+
+// Tüm admin rotaları /api/admin/ prefix'i altında
+// Auth + Admin middleware ile korunur
+
+DASHBOARD:
+GET    /api/admin/dashboard/stats
+GET    /api/admin/dashboard/revenue-chart
+GET    /api/admin/dashboard/orders-chart
+GET    /api/admin/dashboard/top-products
+GET    /api/admin/dashboard/recent-orders
+GET    /api/admin/dashboard/recent-reviews
+GET    /api/admin/dashboard/low-stock
+
+USERS:
+GET    /api/admin/users (listele, filtrele, ara, sayfala)
+GET    /api/admin/users/:id
+PUT    /api/admin/users/:id
+PUT    /api/admin/users/:id/ban
+PUT    /api/admin/users/:id/role
+DELETE /api/admin/users/:id
+POST   /api/admin/users/export (CSV/Excel)
+
+PRODUCTS:
+GET    /api/admin/products
+POST   /api/admin/products
+GET    /api/admin/products/:id
+PUT    /api/admin/products/:id
+DELETE /api/admin/products/:id
+PUT    /api/admin/products/:id/status
+PUT    /api/admin/products/bulk-update
+DELETE /api/admin/products/bulk-delete
+POST   /api/admin/products/import (CSV/Excel)
+POST   /api/admin/products/export
+
+CATEGORIES:
+GET    /api/admin/categories
+POST   /api/admin/categories
+PUT    /api/admin/categories/:id
+DELETE /api/admin/categories/:id
+PUT    /api/admin/categories/reorder
+
+BRANDS:
+GET    /api/admin/brands
+POST   /api/admin/brands
+PUT    /api/admin/brands/:id
+DELETE /api/admin/brands/:id
+
+ORDERS:
+GET    /api/admin/orders
+GET    /api/admin/orders/:id
+PUT    /api/admin/orders/:id/status
+PUT    /api/admin/orders/:id/tracking
+PUT    /api/admin/orders/:id/notes
+POST   /api/admin/orders/export
+GET    /api/admin/orders/stats
+
+REVIEWS:
+GET    /api/admin/reviews
+PUT    /api/admin/reviews/:id/approve
+PUT    /api/admin/reviews/:id/reject
+DELETE /api/admin/reviews/:id
+POST   /api/admin/reviews/:id/reply
+
+COUPONS:
+GET    /api/admin/coupons
+POST   /api/admin/coupons
+PUT    /api/admin/coupons/:id
+DELETE /api/admin/coupons/:id
+
+CAMPAIGNS:
+GET    /api/admin/campaigns
+POST   /api/admin/campaigns
+PUT    /api/admin/campaigns/:id
+DELETE /api/admin/campaigns/:id
+
+BANNERS/SLIDERS:
+GET    /api/admin/banners
+POST   /api/admin/banners
+PUT    /api/admin/banners/:id
+DELETE /api/admin/banners/:id
+PUT    /api/admin/banners/reorder
+
+BLOG:
+GET    /api/admin/blog
+POST   /api/admin/blog
+PUT    /api/admin/blog/:id
+DELETE /api/admin/blog/:id
+GET    /api/admin/blog/categories
+POST   /api/admin/blog/categories
+PUT    /api/admin/blog/categories/:id
+DELETE /api/admin/blog/categories/:id
+
+FAQ:
+GET    /api/admin/faq
+POST   /api/admin/faq
+PUT    /api/admin/faq/:id
+DELETE /api/admin/faq/:id
+
+PAGES:
+GET    /api/admin/pages
+POST   /api/admin/pages
+PUT    /api/admin/pages/:id
+DELETE /api/admin/pages/:id
+
+SETTINGS:
+GET    /api/admin/settings
+PUT    /api/admin/settings
+
+NEWSLETTER:
+GET    /api/admin/newsletter/subscribers
+POST   /api/admin/newsletter/send
+DELETE /api/admin/newsletter/:id
+POST   /api/admin/newsletter/export
+
+CONTACT MESSAGES:
+GET    /api/admin/contacts
+GET    /api/admin/contacts/:id
+PUT    /api/admin/contacts/:id/reply
+PUT    /api/admin/contacts/:id/status
+
+RETURNS:
+GET    /api/admin/returns
+PUT    /api/admin/returns/:id/status
+PUT    /api/admin/returns/:id/refund
+
+PRODUCT QUESTIONS:
+GET    /api/admin/questions
+PUT    /api/admin/questions/:id/answer
+PUT    /api/admin/questions/:id/approve
+DELETE /api/admin/questions/:id
+
+REPORTS:
+GET    /api/admin/reports/sales
+GET    /api/admin/reports/products
+GET    /api/admin/reports/customers
+GET    /api/admin/reports/categories
+GET    /api/admin/reports/brands
+GET    /api/admin/reports/coupons
+POST   /api/admin/reports/export
+
+UPLOAD:
+POST   /api/admin/upload/image
+POST   /api/admin/upload/images (çoklu)
+DELETE /api/admin/upload/image/:publicId
+
+SEO:
+GET    /api/admin/seo
+PUT    /api/admin/seo (genel SEO ayarları)
+GET    /api/admin/seo/pages
+PUT    /api/admin/seo/pages/:pageType
+POST   /api/admin/seo/generate-sitemap
+GET    /api/admin/seo/redirects
+POST   /api/admin/seo/redirects
+DELETE /api/admin/seo/redirects/:id
+
+CARGO:
+GET    /api/admin/cargo-companies
+POST   /api/admin/cargo-companies
+PUT    /api/admin/cargo-companies/:id
+DELETE /api/admin/cargo-companies/:id
+
+LOGS:
+GET    /api/admin/logs/activity
+GET    /api/admin/logs/errors
+
+─────────────────────────────────
+📌 2.4 BACKEND ÖZELLİKLERİ
+─────────────────────────────────
+
+GÜVENLİK:
+- Helmet.js (HTTP headers güvenliği)
+- CORS yapılandırması
+- Rate limiting (express-rate-limit)
+  → Genel: 100 istek/15dk
+  → Login: 5 deneme/15dk
+  → API: 1000 istek/15dk
+- Brute-force koruması (şifre denemeleri)
+- XSS koruması (xss-clean)
+- NoSQL injection koruması (express-mongo-sanitize)
+- HPP koruması (hpp - HTTP Parameter Pollution)
+- CSRF koruması
+- JWT:
+  → Access Token (15dk expire)
+  → Refresh Token (7 gün expire, httpOnly cookie)
+  → Token blacklist (çıkışta)
+- Input validation (express-validator + Joi)
+- Dosya upload güvenliği (boyut limiti, dosya tipi kontrolü)
+- Şifre politikası (min 8 karakter, büyük/küçük harf, rakam)
+
+PERFORMANS:
+- Redis cache (popüler ürünler, kategoriler, ayarlar)
+- Database indexing (sık sorgulanan alanlar)
+- Gzip/Brotli sıkıştırma
+- Görsel optimizasyonu (Sharp ile resize, WebP dönüşüm)
+- Pagination (limit/skip veya cursor-based)
+- Database aggregation pipeline (raporlar için)
+- Connection pooling
+
+EMAIL SERVİSİ (Nodemailer):
+- Kayıt onay emaili
+- Şifre sıfırlama emaili
+- Sipariş onay emaili
+- Sipariş durum güncelleme emaili
+- Kargo bildirim emaili
+- Fatura emaili (PDF ek)
+- Hoş geldin emaili + kupon
+- Doğum günü kutlama emaili + kupon
+- Terk edilmiş sepet hatırlatma emaili
+- Fiyat düşüş bildirimi emaili
+- Stok bildirimi emaili
+- Newsletter email şablonları
+- Tüm emailler HTML template ile (güzel tasarımlı)
+
+CRON JOBS (node-cron):
+- Süresi dolan kuponları pasife al (günlük)
+- Terk edilmiş sepet emaili gönder (3 saat sonra)
+- Fiyat alarmı kontrolü (saatlik)
+- Popüler ürünleri güncelle (günlük)
+- Raporları oluştur (günlük/haftalık/aylık)
+- Stok uyarısı emaili (stok eşiğin altına düşünce)
+- Doğum günü kuponu gönder (günlük)
+- Sitemap güncelle (günlük)
+- Eski bildirim/log temizliği (haftalık)
+
+LOGLAMA:
+- Winston logger (dosya + konsol)
+- Morgan HTTP request loglama
+- Admin aktivite logları (kim ne yaptı)
+- Hata logları (dosya + DB)
+- Ödeme logları
+
+=====================================
+📐 BÖLÜM 3: ADMİN PANELİ
+=====================================
+
+Rota: /admin altında SPA olarak çalışacak
+Ayrı layout: AdminLayout (sidebar + topbar + content)
+Tasarım: Profesyonel admin teması, koyu/açık tema seçimi
+Responsive: Tablet ve desktop uyumlu (mobil secondary)
+
+─────────────────────────────────
+📌 3.1 ADMIN LOGIN
+─────────────────────────────────
+- Email + şifre girişi
+- 2FA doğrulama (opsiyonel ama altyapısı olsun)
+- Captcha (opsiyonel)
+- 5 başarısız denemede hesap kilitle
+- Son giriş bilgisi gösterimi
+
+─────────────────────────────────
+📌 3.2 ADMIN DASHBOARD
+─────────────────────────────────
+ÖZET KARTLARI (üst kısım):
+- Bugünün siparişleri (sayı + değişim %)
+- Bugünün cirosu (₺ + değişim %)
+- Toplam müşteri (sayı + bu ay yeni)
+- Bekleyen siparişler (sayı)
+- Düşük stoklu ürünler (uyarı)
+- Bekleyen yorumlar (onay bekleyen)
+- Aktif ziyaretçi sayısı (opsiyonel)
+
+GRAFİKLER:
+- Satış grafiği (çizgi/çubuk): Günlük/Haftalık/Aylık/Yıllık toggle
+  → Ciro + sipariş sayısı aynı grafikte
+- Kategori bazlı satış (pasta/donut grafik)
+- En çok satan 10 ürün (yatay çubuk grafik)
+- Sipariş durum dağılımı (pasta grafik)
+- Müşteri kayıt trendi (çizgi grafik)
+- Trafik kaynakları (opsiyonel)
+
+LİSTELER:
+- Son 10 sipariş tablosu (sipariş no, müşteri, tutar, durum, tarih, detay linki)
+- Son 10 yorum (ürün, müşteri, puan, durum, onay/ret butonları)
+- Son 10 kayıt olan müşteri
+- Düşük stoklu ürünler uyarı listesi
+- Bekleyen iade talepleri
+- Okunmamış iletişim mesajları
+- Terk edilmiş sepetler (son 24 saat)
+
+HIZLI İŞLEMLER:
+- Ürün ekle butonu
+- Sipariş ara
+- Stok güncelle hızlı erişim
+
+─────────────────────────────────
+📌 3.3 ÜRÜN YÖNETİMİ
+─────────────────────────────────
+
+ÜRÜN LİSTESİ:
+- DataTable (sıralanabilir, filtrelenebilir, aranabilir, sayfalanabilir)
+- Sütunlar: Checkbox, Görsel(thumb), İsim, SKU, Kategori, Marka,
+  Fiyat, Stok, Durum, Puan, Satış, İşlemler
+- Toplu işlemler: Seçili ürünleri sil, aktif/pasif yap, fiyat güncelle,
+  kategori değiştir, dışa aktar
+- Filtreler: Kategori, Marka, Stok durumu, Aktif/Pasif, Fiyat aralığı, Tarih
+- Arama: İsim, SKU, Barkod
+- Dışa aktarma: CSV, Excel, PDF
+- İçe aktarma: CSV/Excel ile toplu ürün ekleme
+
+ÜRÜN EKLEME/DÜZENLEME FORMU:
+(Tabbed form yapısı)
+
+TAB 1 - GENEL BİLGİLER:
+- Ürün adı (slug otomatik oluşturulsun, düzenlenebilir)
+- Kısa açıklama (textarea)
+- Detaylı açıklama (Zengin metin editörü - TipTap/Quill/CKEditor):
+  → Başlıklar, bold/italic/underline
+  → Listeler (sıralı/sırasız)
+  → Görsel ekleme (sürükle-bırak upload)
+  → Video embed
+  → Tablo ekleme
+  → Link ekleme
+  → HTML görünümü
+- Kategori seçimi (cascading dropdown veya ağaç)
+- Alt kategori seçimi
+- Marka seçimi (searchable dropdown)
+- Etiketler (tag input - virgülle ayırarak veya enter ile)
+- Durum: Aktif/Pasif/Taslak
+- Öne çıkan ürün toggle
+- Yeni ürün toggle
+- Çok satan toggle
+
+TAB 2 - GÖRSELLER & MEDYA:
+- Çoklu görsel yükleme (sürükle-bırak zone)
+- Görsel sıralama (drag & drop)
+- Ana görsel seçimi
+- Her görsel için alt text girişi
+- Görsel kırpma/düzenleme
+- Max 10 görsel
+- Video URL (YouTube/Vimeo embed)
+- 360° görsel URL (opsiyonel)
+- Otomatik boyutlandırma: Thumbnail (150x150), Medium (600x600),
+  Large (1200x1200)
+
+TAB 3 - FİYATLANDIRMA:
+- Satış fiyatı (₺)
+- Karşılaştırma fiyatı / eski fiyat (₺) - indirim hesabı
+- Maliyet fiyatı (₺) - sadece admin görür
+- KDV oranı (%)
+- Kazanılacak puan
+- Kar marjı otomatik hesaplama gösterimi
+
+TAB 4 - STOK & VARYANTLAR:
+- "Bu ürünün varyantları var mı?" toggle
+
+  VARYANT YOKSA:
+  - SKU (otomatik oluştur veya manuel)
+  - Barkod
+  - Stok adedi
+  - Düşük stok eşiği
+  - Ağırlık (gram)
+
+  VARYANT VARSA:
+  - Varyant tipi ekleme: Aroma/Tat + Boyut/Ağırlık
+  - Aroma seçenekleri ekleme (Çikolata, Vanilya, Çilek, ...)
+  - Boyut seçenekleri ekleme (500g, 1kg, 2.27kg, ...)
+  - Otomatik kombinasyon oluşturma (ör: Çikolata-500g, Çikolata-1kg,
+    Vanilya-500g, Vanilya-1kg...)
+  - Her kombinasyon için ayrı ayrı:
+    → SKU, Barkod
+    → Fiyat, karşılaştırma fiyatı, maliyet
+    → Stok, düşük stok eşiği
+    → Ağırlık
+    → Görsel (opsiyonel)
+    → Aktif/Pasif
+  - Toplu fiyat/stok güncelleme
+
+TAB 5 - BESİN DEĞERLERİ (supplement'e özel):
+- Porsiyon boyutu (ör: 30g / 1 scoop)
+- Ambalajdaki porsiyon sayısı
+- Besin tablosu (dinamik satır ekleme):
+  → Kalori, Protein, Karbonhidrat, Yağ, Lif, Şeker, Sodyum, vb.
+  → Özel besin değeri ekleme
+- İçindekiler listesi (textarea)
+- Alerjen bilgileri (checkbox: Süt, Soya, Gluten, Yumurta, Fıstık, Kabuklu Yemiş)
+- Sertifikalar (checkbox: Helal, GMP, ISO, Informed Sport, NSF, Vegan)
+- Özellikler (key-value çiftleri): Menşei, Üretici, Son Kullanma Tarihi formatı
+
+TAB 6 - SEO:
+- Meta Başlık (auto-generated + düzenlenebilir + karakter sayacı 60)
+- Meta Açıklama (auto-generated + düzenlenebilir + karakter sayacı 160)
+- Meta Anahtar Kelimeler
+- Canonical URL
+- Open Graph görseli
+- SEO önizleme (Google arama sonucu önizlemesi)
+- Schema markup önizlemesi
+- Slug düzenleme
+- noindex/nofollow toggle
+
+TAB 7 - İLİŞKİLİ ÜRÜNLER:
+- Benzer ürünler seçimi (ürün arama + seçme)
+- Birlikte alınan ürünler seçimi
+- Cross-sell ürünler
+
+TAB 8 - KARGO:
+- Ücretsiz kargo toggle
+- Ağırlık (gram)
+- Boyutlar (en x boy x yükseklik cm)
+- Özel kargo kuralı (opsiyonel)
+
+─────────────────────────────────
+📌 3.4 KATEGORİ YÖNETİMİ
+─────────────────────────────────
+- Kategori ağacı görünümü (drag & drop sıralama)
+- Ekleme/düzenleme formu:
+  → İsim + slug
+  → Üst kategori seçimi (ağaç dropdown)
+  → Açıklama
+  → Görsel + ikon
+  → Banner görseli
+  → Sıralama numarası
+  → Aktif/Pasif + Öne çıkan
+  → SEO: Meta title, meta description, keywords
+  → Mega menü ayarları: Öne çıkan ürün seçimi, banner görseli
+  → Filtre ayarları (bu kategoride hangi filtreler gösterilsin)
+- Kategori silme (ürünleri başka kategoriye taşıma seçeneği)
+- Ürün sayısı gösterimi
+
+─────────────────────────────────
+📌 3.5 MARKA YÖNETİMİ
+─────────────────────────────────
+- Marka listesi (logo + isim + ürün sayısı + durum)
+- Ekleme/düzenleme:
+  → İsim + slug
+  → Logo yükleme
+  → Banner görseli
+  → Açıklama
+  → Web sitesi URL
+  → Menşei ülke
+  → Sıralama + Aktif/Pasif + Öne çıkan
+  → SEO alanları
+
+─────────────────────────────────
+📌 3.6 SİPARİŞ YÖNETİMİ
+─────────────────────────────────
+SİPARİŞ LİSTESİ:
+- DataTable: Sipariş no, Müşteri, Tarih, Toplam, Ödeme, Durum, İşlemler
+- Durum filtresi (tab'lar): Tümü | Bekleyen | Onaylanan | Hazırlanan |
+  Kargoda | Teslim Edilen | İptal | İade
+- Tarih aralığı filtresi
+- Arama: Sipariş no, müşteri adı, email, telefon
+- Toplu durum güncelleme
+- Dışa aktarma: CSV, Excel, PDF
+
+SİPARİŞ DETAY:
+- Sipariş bilgi kartı: No, tarih, durum, ödeme yöntemi, IP
+- Müşteri bilgileri: Ad, email, telefon, sipariş geçmişi linki
+- Ürün tablosu: Görsel, isim, varyant, birim fiyat, adet, toplam
+- Teslimat adresi
+- Fatura bilgisi
+- Ödeme bilgisi + taksit detayı
+- Sipariş özeti: Ara toplam, indirim, kupon, kargo, vergi, toplam
+- Durum güncelleme:
+  → Dropdown ile yeni durum seç
+  → Kargo firması seç + takip numarası gir (kargoda seçilince)
+  → Not ekle
+  → Müşteriye bildirim gönder checkbox
+- Durum geçmişi timeline
+- Admin notları (müşteriye görünmez)
+- Fatura oluştur / indir (PDF)
+- İrsaliye oluştur / indir (PDF)
+- "Ödeme İadesi Yap" butonu
+- Sipariş yazdır butonu
+- Email gönder (müşteriye özel email)
+
+─────────────────────────────────
+📌 3.7 MÜŞTERİ YÖNETİMİ
+─────────────────────────────────
+MÜŞTERİ LİSTESİ:
+- DataTable: Avatar, Ad Soyad, Email, Telefon, Kayıt Tarihi,
+  Sipariş Sayısı, Toplam Harcama, Puan, Durum, İşlemler
+- Filtreler: Kayıt tarihi, sipariş sayısı, harcama tutarı, durum
+- Arama: İsim, email, telefon
+- Dışa aktarma
+
+MÜŞTERİ DETAY:
+- Profil bilgileri + düzenleme
+- Sipariş geçmişi listesi
+- Adresler
+- Favoriler
+- Yorumlar
+- Puan geçmişi
+- Kuponlar
+- Toplam harcama, sipariş sayısı, ortalama sepet tutarı
+- "Puan Ekle/Çıkar" butonu
+- "Kupon Tanımla" butonu
+- "Email Gönder" butonu
+- "Hesap Ban" / "Aktif Et" butonları
+- Müşteri notları (admin notu)
+
+─────────────────────────────────
+📌 3.8 İÇERİK YÖNETİMİ
+─────────────────────────────────
+
+BANNER / SLIDER YÖNETİMİ:
+- Slider listesi (sürükle-bırak sıralama)
+- Ekleme/düzenleme:
+  → Desktop görsel + Mobil görsel
+  → Başlık, açıklama, buton metni, buton linki
+  → Sıralama
+  → Aktif/Pasif
+  → Başlangıç/bitiş tarihi
+
+KAMPANYA YÖNETİMİ:
+- Kampanya listesi
+- Ekleme/düzenleme:
+  → İsim, açıklama, tip seçimi
+  → Banner görseli (desktop + mobil)
+  → Başlangıç/bitiş tarihi + geri sayım
+  → İndirim tipi ve değeri
+  → Ürün/kategori/marka seçimi
+  → Aktif/Pasif, öne çıkan, sıralama
+  → SEO alanları
+
+KUPON YÖNETİMİ:
+- Kupon listesi: Kod, tip, değer, kullanım, limit, bitiş tarihi, durum
+- Ekleme/düzenleme:
+  → Kupon kodu (manuel veya otomatik oluştur)
+  → Açıklama
+  → İndirim tipi: Yüzde / Sabit tutar / Ücretsiz kargo / X al Y öde
+  → İndirim değeri
+  → Min sipariş tutarı
+  → Maks indirim tutarı
+  → Başlangıç/bitiş tarihi
+  → Toplam kullanım limiti
+  → Kullanıcı başı limit
+  → Geçerli kategoriler/markalar/ürünler
+  → Hariç tutulan ürünler
+  → İlk sipariş özel mi?
+  → Aktif/Pasif, Herkese açık mı?
+- Kullanım geçmişi (kim, ne zaman, hangi sipariş)
+
+BLOG YÖNETİMİ:
+- Blog listesi: Başlık, kategori, yazar, yayın tarihi, görüntülenme, durum
+- Ekleme/düzenleme:
+  → Başlık + slug
+  → Özet
+  → İçerik (zengin metin editörü)
+  → Kapak görseli + alt text
+  → Kategori seçimi
+  → Etiketler
+  → İlgili ürünler seçimi
+  → Yazar seçimi
+  → Yayın tarihi (zamanlı yayın)
+  → Durum: Taslak / Yayında
+  → SEO alanları
+- Blog kategori yönetimi
+- Yorum yönetimi (onay/ret/sil)
+
+SSS YÖNETİMİ:
+- SSS kategorileri
+- Soru-cevap listesi
+- Ekleme/düzenleme:
+  → Kategori, soru, cevap (zengin metin)
+  → Sıralama
+  → Aktif/Pasif
+
+SAYFA YÖNETİMİ (Statik sayfalar):
+- Hakkımızda, Gizlilik Politikası, KVKK, Mesafeli Satış Sözleşmesi, vb.
+- Zengin metin editörü ile içerik
+- SEO alanları
+- Her sayfa için slug
+
+MENÜ YÖNETİMİ:
+- Header menü yapısını sürükle-bırak düzenleme
+- Alt menü ekleme
+- Mega menü konfigürasyonu (kategori bazlı)
+- Footer menü düzenleme
+
+DUYURU/ANNOUNCEMENT YÖNETİMİ:
+- Üst bar kayan yazı metinleri
+- Arka plan rengi, yazı rengi
+- Link
+- Aktif/Pasif, sıralama
+
+─────────────────────────────────
+📌 3.9 YORUM & SORU YÖNETİMİ
+─────────────────────────────────
+
+YORUM YÖNETİMİ:
+- Yorum listesi: Ürün, Müşteri, Puan, Yorum(kısa), Tarih, Durum, İşlemler
+- Tab filtre: Tümü | Onay Bekleyen | Onaylanan | Reddedilen
+- Detay görünümü: Tam yorum metni + fotoğraflar
+- Onayla / Reddet butonları
+- Red sebebi girişi
+- Admin cevabı yazma
+- Toplu onay/ret
+
+SORU YÖNETİMİ:
+- Ürün soruları listesi
+- Cevapla / Onayla / Sil
+- Cevaplanmamış sorular filtresi
+
+─────────────────────────────────
+📌 3.10 İADE YÖNETİMİ
+─────────────────────────────────
+- İade talepleri listesi: Sipariş no, müşteri, tarih, sebep, durum
+- Detay: Ürünler, sebep, açıklama, fotoğraflar
+- Durum güncelleme: Onay / Red / Alındı / İade Edildi
+- Geri ödeme işlemi (tutar + yöntem)
+- İade kargo takip numarası girişi
+- Admin notları
+
+─────────────────────────────────
+📌 3.11 İLETİŞİM MESAJLARI
+─────────────────────────────────
+- Mesaj listesi: Gönderen, konu, tarih, durum
+- Detay + cevaplama formu
+- Durum: Yeni / Okundu / Cevaplandı / Kapatıldı
+
+─────────────────────────────────
+📌 3.12 RAPORLAR & ANALİTİK
+─────────────────────────────────
+
+SATIŞ RAPORLARI:
+- Günlük / Haftalık / Aylık / Yıllık satış raporu
+- Tarih aralığı seçimi
+- Grafik + tablo
+- Ciro, sipariş sayısı, ortalama sipariş tutarı, iptal oranı
+- Ödeme yöntemi dağılımı
+- Karşılaştırma (bu ay vs geçen ay)
+
+ÜRÜN RAPORLARI:
+- En çok satan ürünler
+- En çok gelir getiren ürünler
+- En çok görüntülenen ürünler
+- En çok favorilenen ürünler
+- Stok durumu raporu
+- Hiç satılmayan ürünler
+- Kar marjı raporu
+
+MÜŞTERİ RAPORLARI:
+- Yeni müşteri trendi
+- En çok harcayan müşteriler (VIP listesi)
+- Müşteri yaşam boyu değeri
+- Tekrar satın alma oranı
+- Sepet terk oranı
+
+KATEGORİ RAPORLARI:
+- Kategori bazlı satış
+- Kategori performans karşılaştırma
+
+MARKA RAPORLARI:
+- Marka bazlı satış
+- Marka popülerlik sıralaması
+
+KUPON RAPORLARI:
+- Kupon kullanım istatistikleri
+- Kupon bazlı ciro
+
+TÜM RAPORLAR:
+- Grafik (Chart.js / Recharts)
+- Tablo
+- PDF, Excel, CSV dışa aktarma
+- Otomatik email ile gönderim (haftalık rapor)
+
+─────────────────────────────────
+📌 3.13 SEO YÖNETİMİ (Admin Panel)
+─────────────────────────────────
+
+GENEL SEO AYARLARI:
+- Varsayılan meta title şablonu (ör: {Ürün Adı} | {Site Adı})
+- Varsayılan meta description şablonu
+- Google Analytics ID
+- Google Tag Manager ID
+- Google Search Console doğrulama kodu
+- Facebook Pixel ID
+- robots.txt düzenleme
+- Global meta keywords
+
+SAYFA BAZLI SEO:
+- Her sayfa tipi için meta ayarları:
+  → Anasayfa: Title, description, keywords, OG image
+  → Kategori sayfaları: Şablon ({Kategori Adı} - {Site Adı})
+  → Ürün sayfaları: Şablon ({Ürün Adı} | {Marka} | {Site Adı})
+  → Marka sayfaları: Şablon
+  → Blog sayfaları: Şablon
+- SEO önizleme (Google arama sonucu mockup)
+- Karakter sayaçları (title: 60, description: 160)
+
+SCHEMA MARKUP:
+- Product schema (otomatik)
+- BreadcrumbList schema (otomatik)
+- Organization schema
+- LocalBusiness schema
+- FAQ schema (SSS sayfası)
+- BlogPosting schema
+- Review/AggregateRating schema
+- Offer schema (fiyat, stok durumu)
+
+SİTEMAP YÖNETİMİ:
+- Otomatik sitemap.xml oluşturma
+- Manuel güncelleme butonu
+- Dahil edilecek sayfa tipleri seçimi
+- Sayfa bazlı priority ve changefreq ayarları
+- Sitemap'ı Google'a ping gönderme
+
+301 YÖNLENDİRME YÖNETİMİ:
+- Eski URL → Yeni URL yönlendirme listesi
+- Ekleme/düzenleme/silme
+- Toplu import (CSV)
+
+URL YAPISI:
+- SEO-friendly URL'ler:
+  → /protein-tozu (kategori)
+  → /protein-tozu/whey-protein (alt kategori)
+  → /urun/optimum-nutrition-gold-standard-whey-2-27kg (ürün)
+  → /marka/optimum-nutrition (marka)
+  → /blog/en-iyi-whey-protein-hangisi (blog)
+- Otomatik slug oluşturma (Türkçe karakterler: ş→s, ü→u, ö→o, ç→c, ğ→g, ı→i)
+- Duplicate slug kontrolü (suffix ekleme: -1, -2)
+
+OPEN GRAPH & SOSyal MEDYA:
+- OG title, description, image her sayfa için
+- Twitter Card meta tags
+- Pinterest Rich Pin desteği
+- WhatsApp paylaşım önizlemesi
+
+PERFORMANS SEO:
+- Lazy loading images (loading="lazy")
+- WebP görsel formatı
+- Minified CSS/JS
+- Gzip/Brotli sıkıştırma
+- Cache-Control headers
+- Structured data test linki
+- Core Web Vitals bilgilendirme
+
+KATEGORİ SEO:
+- Her kategori için benzersiz:
+  → Meta title
+  → Meta description
+  → H1 başlık (kategori adından farklı olabilir)
+  → Kategori açıklama metni (sayfa altında, SEO amaçlı uzun metin)
+  → Canonical URL
+  → Breadcrumb yapısı
+- Filtre + SEO uyumu (filtre sayfaları noindex veya canonical)
+
+ÜRÜN SEO:
+- Her ürün için:
+  → Benzersiz meta title
+  → Benzersiz meta description (otomatik veya manuel)
+  → Alt text her görsel için
+  → Schema: Product + Offer + AggregateRating + Review
+  → Canonical URL
+  → Breadcrumb
+  → Structured data preview
+
+─────────────────────────────────
+📌 3.14 GENEL AYARLAR (Admin Panel)
+─────────────────────────────────
+
+SİTE AYARLARI:
+- Site adı, açıklaması
+- Logo yükleme (header + footer + favicon)
+- İletişim: Email, telefon, WhatsApp, adres
+- Sosyal medya linkleri
+- Çalışma saatleri
+- Google Maps koordinatları
+
+KARGO AYARLARI:
+- Ücretsiz kargo eşiği (₺)
+- Varsayılan kargo ücreti
+- Ekspres kargo ücreti
+- Kargo firmaları yönetimi (isim, logo, takip URL şablonu)
+- Bölgeye göre kargo ücreti (opsiyonel)
+
+ÖDEME AYARLARI:
+- Kredi kartı aktif/pasif
+- Havale/EFT aktif/pasif
+  → Banka hesapları (banka adı, IBAN, hesap sahibi)
+  → Havale indirimi (%)
+- Kapıda ödeme aktif/pasif
+  → Ek ücret (₺)
+- Min sipariş tutarı
+- Maks sipariş tutarı
+- İyzico/PayTR API anahtarları (güvenli alan)
+- Taksit ayarları
+
+PUAN SİSTEMİ AYARLARI:
+- Puan sistemi aktif/pasif
+- Harcama başına puan oranı (ör: 1₺ = 1 puan)
+- Puan değeri (ör: 100 puan = 1₺)
+- Hoş geldin puanı (yeni üye)
+- Min puan kullanım eşiği
+- Puan geçerlilik süresi
+
+EMAİL AYARLARI:
+- SMTP ayarları (host, port, user, password)
+- Gönderen email adresi + isim
+- Email şablonları düzenleme (her email tipi için HTML editör):
+  → Hoş geldin emaili
+  → Sipariş onay
+  → Kargo bildirim
+  → Şifre sıfırlama
+  → Fiyat alarmı
+  → Terk edilmiş sepet
+  → Newsletter
+
+VERGİ AYARLARI:
+- KDV oranı (%)
+
+BAKIM MODU:
+- Aktif/Pasif toggle
+- Bakım modu mesajı
+- Tahmini süre
+
+─────────────────────────────────
+📌 3.15 ADMIN ROLLER & YETKİLER
+─────────────────────────────────
+ROL TİPLERİ:
+- Super Admin: Tüm yetkiler
+- Admin: Ayarlar hariç tüm yetkiler
+- Editör: İçerik + ürün yönetimi, sipariş görüntüleme
+- Moderatör: Yorum + soru onaylama, mesaj yanıtlama
+- Kargo Sorumlusu: Sipariş durumu güncelleme, kargo işlemleri
+
+Her rol için granüler yetki tanımlama:
+- Ürünler: Görüntüle / Ekle / Düzenle / Sil
+- Siparişler: Görüntüle / Düzenle / İptal
+- Müşteriler: Görüntüle / Düzenle / Sil / Ban
+- İçerik: Blog / Banner / SSS / Sayfa yönetimi
+- Finans: Raporlar / İade / Ödeme
+- Ayarlar: Genel / SEO / Ödeme / Kargo / Email
+- Her admin'in aktivite logu tutulsun
+
+─────────────────────────────────
+📌 3.16 ADMIN PANEL EK ÖZELLİKLER
+─────────────────────────────────
+
+📧 NEWSLETTER YÖNETİMİ:
+- Abone listesi (email, tarih, kaynak, durum)
+- Toplu email gönderimi (HTML editör ile)
+- Segment oluşturma (tüm aboneler, son 30 gün, hiç alışveriş yapmayanlar)
+- Gönderim istatistikleri (gönderilen, açılan, tıklanan)
+- Aboneleri dışa aktarma
+
+📊 CANLI GÖSTERİM:
+- Anlık sipariş bildirimleri (toast / ses)
+- Anlık düşük stok uyarıları
+- Anlık yeni yorum bildirimi
+- Anlık iletişim mesajı bildirimi
+
+📋 AKTİVİTE LOGU:
+- Kim, ne zaman, ne yaptı logları
+- Filtre: Kullanıcı, işlem tipi, tarih aralığı
+- Ör: "Admin Ahmet, Ürün #123'ü güncelledi - 14:30"
+
+🗑️ ÇÖP KUTUSU:
+- Silinen ürünler, kategoriler, bloglar çöp kutusuna gitsin
+- 30 gün içinde geri yükleme seçeneği
+- Kalıcı silme
+
+📤 İÇE/DIŞA AKTARMA:
+- Ürünler: CSV/Excel import/export
+- Müşteriler: CSV export
+- Siparişler: CSV/Excel/PDF export
+- Import şablonu indirme
+- Import önizleme + hata kontrolü
+
+🔔 BİLDİRİM TERCİHLERİ:
+- Admin email bildirim ayarları:
+  → Yeni sipariş geldiğinde
+  → Sipariş iptal edildiğinde
+  → İade talebi oluşturulduğunda
+  → Stok eşiğin altına düştüğünde
+  → Yeni yorum yapıldığında
+  → İletişim mesajı geldiğinde
+
+=====================================
+📐 BÖLÜM 4: TEKNİK DETAYLAR
+=====================================
+
+FRONTEND KLASÖR YAPISI:
+src/
+├── assets/ (görseller, fontlar, statik dosyalar)
+├── components/
+│   ├── common/ (Button, Input, Modal, Toast, Loader, Badge, ...)
+│   ├── layout/ (Header, Footer, Sidebar, MobileMenu, Breadcrumb, ...)
+│   ├── home/ (HeroSlider, CategorySection, FlashSale, BrandCarousel, ...)
+│   ├── product/ (ProductCard, ProductGallery, VariantSelector,
+│   │            NutritionTable, ReviewList, QuestionList, ...)
+│   ├── cart/ (CartItem, CartSummary, CouponInput, ...)
+│   ├── checkout/ (StepIndicator, AddressForm, PaymentForm, ...)
+│   ├── user/ (OrderList, AddressList, WishlistGrid, ...)
+│   ├── blog/ (BlogCard, BlogContent, CommentSection, ...)
+│   ├── admin/ (AdminSidebar, AdminHeader, DataTable, Charts,
+│   │          FormComponents, ...)
+│   └── seo/ (SEOHead, SchemaMarkup, Breadcrumb, ...)
+├── pages/
+│   ├── Home.jsx
+│   ├── ProductList.jsx
+│   ├── ProductDetail.jsx
+│   ├── Cart.jsx
+│   ├── Checkout.jsx
+│   ├── Login.jsx
+│   ├── Register.jsx
+│   ├── ForgotPassword.jsx
+│   ├── UserDashboard.jsx
+│   ├── UserOrders.jsx
+│   ├── UserAddresses.jsx
+│   ├── UserWishlist.jsx
+│   ├── UserReviews.jsx
+│   ├── UserCoupons.jsx
+│   ├── UserPoints.jsx
+│   ├── UserSettings.jsx
+│   ├── BrandList.jsx
+│   ├── BrandDetail.jsx
+│   ├── CampaignList.jsx
+│   ├── CampaignDetail.jsx
+│   ├── BlogList.jsx
+│   ├── BlogDetail.jsx
+│   ├── FAQ.jsx
+│   ├── Contact.jsx
+│   ├── About.jsx
+│   ├── OrderTrack.jsx
+│   ├── Compare.jsx
+│   ├── Search.jsx
+│   ├── Page.jsx (dinamik statik sayfalar)
+│   ├── NotFound.jsx (404)
+│   └── admin/
+│       ├── AdminDashboard.jsx
+│       ├── AdminProducts.jsx
+│       ├── AdminProductForm.jsx
+│       ├── AdminCategories.jsx
+│       ├── AdminBrands.jsx
+│       ├── AdminOrders.jsx
+│       ├── AdminOrderDetail.jsx
+│       ├── AdminCustomers.jsx
+│       ├── AdminCustomerDetail.jsx
+│       ├── AdminReviews.jsx
+│       ├── AdminQuestions.jsx
+│       ├── AdminCoupons.jsx
+│       ├── AdminCampaigns.jsx
+│       ├── AdminBanners.jsx
+│       ├── AdminBlog.jsx
+│       ├── AdminBlogForm.jsx
+│       ├── AdminFAQ.jsx
+│       ├── AdminPages.jsx
+│       ├── AdminReturns.jsx
+│       ├── AdminContacts.jsx
+│       ├── AdminNewsletter.jsx
+│       ├── AdminReports.jsx
+│       ├── AdminSEO.jsx
+│       ├── AdminSettings.jsx
+│       ├── AdminUsers.jsx (admin kullanıcıları)
+│       ├── AdminMenus.jsx
+│       └── AdminActivityLog.jsx
+├── hooks/ (useAuth, useCart, useWishlist, useSearch, useDebounce,
+│          useInfiniteScroll, useLocalStorage, useMediaQuery, ...)
+├── store/
+│   ├── store.js
+│   ├── slices/ (authSlice, cartSlice, wishlistSlice, compareSlice,
+│   │           uiSlice, filterSlice, ...)
+│   └── api/ (productApi, categoryApi, brandApi, orderApi, userApi,
+│            reviewApi, blogApi, adminApi, ...)
+├── utils/ (formatPrice, formatDate, slugify, validators, constants, ...)
+├── styles/ (tailwind config, global styles, animations)
+├── i18n/ (tr.json, en.json, i18n config)
+├── routes/ (AppRoutes, PrivateRoute, AdminRoute, ...)
+└── App.jsx
+
+STATE MANAGEMENT (Redux Toolkit + RTK Query):
+- authSlice: Kullanıcı bilgileri, token, giriş durumu
+- cartSlice: Sepet ürünleri (giriş yapmamışsa localStorage sync)
+- wishlistSlice: Favori ürünler
+- compareSlice: Karşılaştırma ürünleri (max 4)
+- uiSlice: Theme, sidebar durumu, toast queue, modal stack
+- filterSlice: Aktif filtreler, sıralama, sayfalama
+- RTK Query: Tüm API çağrıları (otomatik cache, invalidation, refetch)
+
+ROUTING:
+- React Router v6
+- Lazy loading (React.lazy + Suspense) tüm sayfa bileşenleri için
+- Korumalı rotalar: PrivateRoute (giriş gerekli), AdminRoute (admin yetkisi)
+- 404 sayfası
+- Loading sayfası / skeleton
+
+RESPONSIVE BREAKPOINTS:
+- xs: 0-479px (mobil dikey)
+- sm: 480-639px (mobil yatay)
+- md: 640-767px (tablet dikey)
+- lg: 768-1023px (tablet yatay)
+- xl: 1024-1279px (küçük masaüstü)
+- 2xl: 1280px+ (büyük masaüstü)
+
+ERİŞİLEBİLİRLİK:
+- Semantic HTML (header, nav, main, article, section, footer)
+- ARIA labels
+- Keyboard navigasyon
+- Focus management
+- Alt text tüm görsellerde
+- Kontrast oranları WCAG 2.1 uyumlu
+- Screen reader uyumlu
+
+PERFORMANS:
+- Code splitting (lazy loading)
+- Image lazy loading + placeholder blur
+- Memoization (React.memo, useMemo, useCallback)
+- Virtual list büyük listeler için (react-window)
+- Service Worker cache (PWA)
+- Bundle analizi ve optimizasyonu
+- Tree shaking
+
+=====================================
+📐 BÖLÜM 5: SEED DATA (TEST VERİLERİ)
+=====================================
+
+Admin kullanıcı oluştur:
+- Email: admin@proteinshop.com / Şifre: Admin123!
+- Rol: Super Admin
+
+Örnek kategoriler (yukarıdaki kategori ağacının tamamı)
+
+Örnek markalar (min 15): Optimum Nutrition, MuscleTech, BSN, Dymatize,
+MyProtein, Hardline, Scitec Nutrition, Kevin Levrone, BioTech USA,
+Rule1, Nutrex, GAT Sport, Cellucor, Universal Nutrition, MusclePharm,
+Now Foods, Solgar
+
+Örnek ürünler (min 30): Her kategoriden en az 2-3 ürün
+Gerçekçi isimler, fiyatlar (₺150-3000 aralığı), açıklamalar, besin
+değerleri, görseller (placeholder URL), varyantlar (aromalar + boyutlar)
+
+Örnek blog yazıları (min 5)
+Örnek SSS (min 10)
+Örnek banner slider (3 adet)
+Örnek kuponlar (3 adet): HOSGELDIN10, YAZ2024, ILKSIPARIS
+Örnek kampanya (1 adet)
+Site ayarları (varsayılan değerlerle)
+
+=====================================
+📐 BÖLÜM 6: ÖNCELİK SIRASI
+=====================================
+
+Bu projeyi aşağıdaki sırayla geliştir:
+
+FAZE 1 (Temel):
+1. Proje kurulumu (Vite + Express + MongoDB bağlantısı)
+2. Veritabanı modelleri
+3. Auth sistemi (kayıt, giriş, JWT)
+4. Ürün CRUD (backend)
+5. Kategori & Marka CRUD (backend)
+6. Frontend layout (Header, Footer, genel yapı)
+7. Ana sayfa (temel bileşenler)
+8. Ürün listeleme + filtreleme
+9. Ürün detay sayfası
+10. Sepet sistemi
+
+FAZE 2 (E-ticaret Çekirdeği):
+11. Checkout akışı
+12. Sipariş sistemi
+13. Kullanıcı paneli (siparişler, adresler)
+14. Favori sistemi
+15. Yorum sistemi
+16. Arama sistemi (autocomplete)
+17. Kupon sistemi
+18. Responsive optimizasyon
+
+FAZE 3 (Admin Panel):
+19. Admin dashboard
+20. Admin ürün yönetimi (tam form)
+21. Admin kategori/marka yönetimi
+22. Admin sipariş yönetimi
+23. Admin müşteri yönetimi
+24. Admin banner/slider yönetimi
+25. Admin kupon/kampanya yönetimi
+26. Admin yorum yönetimi
+
+FAZE 4 (İleri Özellikler):
+27. Blog sistemi
+28. SSS sistemi
+29. İletişim sayfası + mesaj yönetimi
+30. Newsletter sistemi
+31. Puan sistemi
+32. Karşılaştırma sistemi
+33. İade sistemi
+34. Admin raporlar
+35. Admin SEO yönetimi
+36. Admin genel ayarlar
+
+FAZE 5 (Polish & Optimizasyon):
+37. Animasyonlar (Framer Motion)
+38. Dark/Light mode
+39. PWA
+40. Email şablonları
+41. SEO optimizasyonu (meta, schema, sitemap)
+42. Performans optimizasyonu
+43. Seed data
+44. Test ve bug fix
+
+=====================================
+📐 BÖLÜM 7: ÖNEMLİ NOTLAR
+=====================================
+
+1. Tüm fiyatlar Türk Lirası (₺) formatında gösterilsin (1.250,00 ₺)
+2. Tüm tarihler Türkçe formatta (15 Ocak 2024, Pazartesi)
+3. Telefon formatı: +90 (5XX) XXX XX XX
+4. Tüm form validasyonları hem frontend hem backend'de olsun
+5. Hata mesajları kullanıcı dostu ve Türkçe olsun
+6. Loading state'ler her yerde olsun (skeleton, spinner)
+7. Empty state'ler (boş sepet, sipariş yok, vs.) güzel illüstrasyonlarla
+8. Toast bildirimleri: Başarı (yeşil), Hata (kırmızı), Bilgi (mavi), Uyarı (sarı)
+9. Tüm silme işlemlerinde onay modalı göster
+10. Sayfa geçişlerinde smooth scroll to top
+11. Tüm görseller WebP formatında optimize edilsin
+12. API response formatı tutarlı: { success, data, message, pagination }
+13. Hata handling: try-catch + global error handler
+14. Rate limiting: Brute force ve DDoS koruması
+15. Environment variables (.env) ile hassas bilgiler
+16. Git .gitignore düzgün yapılandırılsın
+17. README.md dosyası: Kurulum, çalıştırma, API dokümantasyonu
+18. Kod yorumları ve temiz kod prensipleri
+19. Consistent naming convention (camelCase JS, kebab-case URL)
+20. Accessibility (WCAG 2.1 temel uyum)
+
+=====================================
+BAŞLA! İlk olarak proje yapısını oluştur, sonra Faze 1'den itibaren
+adım adım geliştir. Her bileşeni detaylı ve çalışır şekilde yaz.
+UI/UX referans: proteinmkt.com benzeri koyu tema + neon yeşil vurgu.
+=====================================
