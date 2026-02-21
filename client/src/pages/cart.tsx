@@ -29,6 +29,7 @@ function GuestCheckoutInfo() {
 
 export default function CartPage() {
   const { items, totalItems, totalPrice, updateQuantity, removeItem, clearCart, isLoading } = useCart();
+  const { isLoggedIn } = useAuth();
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
@@ -84,8 +85,6 @@ export default function CartPage() {
       </div>
     );
   }
-
-  const { isLoggedIn } = useAuth();
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8" data-testid="cart-page">
