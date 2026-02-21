@@ -320,6 +320,18 @@ export const blogComments = pgTable("blog_comments", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+export const abandonedCarts = pgTable("abandoned_carts", {
+  id: serial("id").primaryKey(),
+  sessionId: text("session_id").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  items: jsonb("items").notNull(),
+  total: decimal("total", { precision: 10, scale: 2 }),
+  isRecovered: boolean("is_recovered").default(false),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, lastLoginAt: true });
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 export const insertBrandSchema = createInsertSchema(brands).omit({ id: true });
@@ -345,6 +357,7 @@ export const insertCampaignSchema = createInsertSchema(campaigns).omit({ id: tru
 export const insertBlogCategorySchema = createInsertSchema(blogCategories).omit({ id: true });
 export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({ id: true, createdAt: true, updatedAt: true, viewCount: true });
 export const insertBlogCommentSchema = createInsertSchema(blogComments).omit({ id: true, createdAt: true });
+export const insertAbandonedCartSchema = createInsertSchema(abandonedCarts).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -396,3 +409,5 @@ export type BlogPost = typeof blogPosts.$inferSelect;
 export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
 export type BlogComment = typeof blogComments.$inferSelect;
 export type InsertBlogComment = z.infer<typeof insertBlogCommentSchema>;
+export type AbandonedCart = typeof abandonedCarts.$inferSelect;
+export type InsertAbandonedCart = z.infer<typeof insertAbandonedCartSchema>;

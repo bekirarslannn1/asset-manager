@@ -20,6 +20,7 @@ import AdminPage from "@/pages/admin";
 import SupplementWizardPage from "@/pages/supplement-wizard";
 import BlogPage from "@/pages/blog";
 import BlogDetailPage from "@/pages/blog-detail";
+import ComparePage from "@/pages/compare";
 import SeoHead from "@/components/seo-head";
 import NotFound from "@/pages/not-found";
 
@@ -33,6 +34,7 @@ function Router() {
         <Route path="/kategori/:slug" component={CategoryPage} />
         <Route path="/sepet" component={CartPage} />
         <Route path="/favoriler" component={FavoritesPage} />
+        <Route path="/karsilastir" component={ComparePage} />
         <Route path="/markalar" component={BrandsPage} />
         <Route path="/sayfa/:slug" component={StaticPage} />
         <Route path="/odeme" component={CheckoutPage} />

@@ -299,6 +299,11 @@ export async function registerRoutes(
     res.json(sub);
   });
 
+  app.post("/api/abandoned-cart", async (req, res) => {
+    const cart = await storage.saveAbandonedCart(req.body);
+    res.status(201).json(cart);
+  });
+
   app.get("/api/pages", async (req, res) => {
     res.json(await storage.getPages());
   });
@@ -516,6 +521,29 @@ export async function registerRoutes(
     const product = await storage.createProduct(req.body);
     await logAudit(req, "create", "products", product.id);
     res.status(201).json(product);
+  });
+
+  app.patch("/api/admin/products/bulk", async (req, res) => {
+    const { ids, updates } = req.body;
+    if (!Array.isArray(ids) || !updates) return res.status(400).json({ error: "ids array and updates object required" });
+    const results = [];
+    for (const id of ids) {
+      const product = await storage.updateProduct(id, updates);
+      results.push(product);
+    }
+    await logAudit(req, "bulk_update", "products", 0, { ids, updates });
+    res.json(results);
+  });
+
+  app.get("/api/admin/products/export", async (_req, res) => {
+    const allProducts = await storage.getProducts();
+    const csvHeader = "ID,Name,Slug,Price,ComparePrice,Stock,SKU,Category,Brand,IsActive,IsFeatured,IsBestSeller,IsNewArrival\n";
+    const csvRows = allProducts.map(p =>
+      `${p.id},"${(p.name || '').replace(/"/g, '""')}","${p.slug}",${p.price},${p.comparePrice || ''},${p.stock || 0},"${p.sku || ''}",${p.categoryId},${p.brandId || ''},${p.isActive},${p.isFeatured},${p.isBestSeller},${p.isNewArrival}`
+    ).join("\n");
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=products.csv");
+    res.send(csvHeader + csvRows);
   });
 
   app.patch("/api/admin/products/:id", async (req, res) => {
@@ -915,6 +943,23 @@ export async function registerRoutes(
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
+  });
+
+  app.get("/api/admin/abandoned-carts", async (_req, res) => {
+    res.json(await storage.getAbandonedCarts());
+  });
+  app.patch("/api/admin/abandoned-carts/:id/recover", async (req, res) => {
+    await storage.recoverAbandonedCart(Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  app.get("/api/admin/low-stock", async (req, res) => {
+    const threshold = parseInt(req.query.threshold as string) || 10;
+    res.json(await storage.getLowStockProducts(threshold));
+  });
+
+  app.get("/api/admin/order-stats", async (_req, res) => {
+    res.json(await storage.getOrderStats());
   });
 
   app.post("/api/payment/initialize", async (req, res) => {

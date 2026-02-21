@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { SlidersHorizontal, Grid3X3, LayoutList, X } from "lucide-react";
+import { SlidersHorizontal, Grid3X3, LayoutList, X, ChevronRight } from "lucide-react";
+import { Link } from "wouter";
 import ProductCard from "@/components/product-card";
 import type { Product, Category, Brand } from "@shared/schema";
 
@@ -24,6 +25,8 @@ export default function ProductsPage() {
     isLactoseFree: false,
     isSugarFree: false,
     searchQuery: params.get("search") || "",
+    minPrice: params.get("minPrice") || "",
+    maxPrice: params.get("maxPrice") || "",
   });
 
   const queryString = new URLSearchParams();
@@ -35,6 +38,8 @@ export default function ProductsPage() {
   if (filters.isSugarFree) queryString.set("isSugarFree", "true");
   if (sortBy) queryString.set("sortBy", sortBy);
   if (filters.searchQuery) queryString.set("search", filters.searchQuery);
+  if (filters.minPrice) queryString.set("minPrice", filters.minPrice);
+  if (filters.maxPrice) queryString.set("maxPrice", filters.maxPrice);
 
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: [`/api/products?${queryString.toString()}`],
@@ -42,10 +47,10 @@ export default function ProductsPage() {
   const { data: categories = [] } = useQuery<Category[]>({ queryKey: ["/api/categories"] });
   const { data: brands = [] } = useQuery<Brand[]>({ queryKey: ["/api/brands"] });
 
-  const activeFilterCount = [filters.categoryId, filters.brandId, filters.isVegan, filters.isGlutenFree, filters.isLactoseFree, filters.isSugarFree].filter(Boolean).length;
+  const activeFilterCount = [filters.categoryId, filters.brandId, filters.isVegan, filters.isGlutenFree, filters.isLactoseFree, filters.isSugarFree, filters.minPrice, filters.maxPrice].filter(Boolean).length;
 
   const clearFilters = () => {
-    setFilters({ categoryId: "", brandId: "", isVegan: false, isGlutenFree: false, isLactoseFree: false, isSugarFree: false, searchQuery: "" });
+    setFilters({ categoryId: "", brandId: "", isVegan: false, isGlutenFree: false, isLactoseFree: false, isSugarFree: false, searchQuery: "", minPrice: "", maxPrice: "" });
   };
 
   const FilterSidebar = () => (
@@ -97,6 +102,29 @@ export default function ProductsPage() {
       </div>
 
       <div>
+        <h3 className="font-semibold text-sm mb-3">Fiyat Aralığı</h3>
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            placeholder="Min ₺"
+            value={filters.minPrice}
+            onChange={(e) => setFilters(f => ({ ...f, minPrice: e.target.value }))}
+            className="w-full"
+            data-testid="input-filter-min-price"
+          />
+          <span className="text-muted-foreground">-</span>
+          <Input
+            type="number"
+            placeholder="Max ₺"
+            value={filters.maxPrice}
+            onChange={(e) => setFilters(f => ({ ...f, maxPrice: e.target.value }))}
+            className="w-full"
+            data-testid="input-filter-max-price"
+          />
+        </div>
+      </div>
+
+      <div>
         <h3 className="font-semibold text-sm mb-3">Özellikler</h3>
         <div className="space-y-3">
           {[
@@ -127,6 +155,11 @@ export default function ProductsPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8" data-testid="products-page">
+      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" data-testid="breadcrumb">
+        <Link href="/"><span className="hover:text-primary cursor-pointer" data-testid="link-breadcrumb-home">Ana Sayfa</span></Link>
+        <ChevronRight className="w-3.5 h-3.5" />
+        <span className="text-foreground" data-testid="text-breadcrumb-current">Ürünler</span>
+      </nav>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold font-heading">

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { formatPrice } from "@/lib/utils";
-import { Plus, Trash2, Edit, Save, X, Package, Image, Search, Tags, FileText, Info } from "lucide-react";
+import { Plus, Trash2, Edit, Save, X, Package, Image, Search, Tags, FileText, Info, Download, CheckSquare, Square } from "lucide-react";
 import type { Product, Category, Brand } from "@shared/schema";
 
 interface NutritionEntry {
@@ -36,7 +36,75 @@ export default function ProductsTab() {
   });
   const [imageUrls, setImageUrls] = useState<string[]>([""]);
   const [nutritionEntries, setNutritionEntries] = useState<NutritionEntry[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [searchFilter, setSearchFilter] = useState("");
   const { toast } = useToast();
+
+  const filteredProducts = products.filter(p =>
+    !searchFilter || p.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
+    (p.sku && p.sku.toLowerCase().includes(searchFilter.toLowerCase()))
+  );
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredProducts.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredProducts.map(p => p.id)));
+    }
+  };
+
+  const bulkUpdateMutation = useMutation({
+    mutationFn: (data: { ids: number[]; updates: any }) => apiRequest("PATCH", "/api/admin/products/bulk", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      setSelectedIds(new Set());
+      toast({ title: "Toplu güncelleme tamamlandı" });
+    },
+  });
+
+  const handleBulkAction = (action: string) => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    const updates: any = {};
+    switch (action) {
+      case "activate": updates.isActive = true; break;
+      case "deactivate": updates.isActive = false; break;
+      case "featured": updates.isFeatured = true; break;
+      case "unfeatured": updates.isFeatured = false; break;
+      case "bestseller": updates.isBestSeller = true; break;
+      case "delete":
+        if (confirm(`${ids.length} ürünü silmek istediğinize emin misiniz?`)) {
+          ids.forEach(id => deleteMutation.mutate(id));
+          setSelectedIds(new Set());
+        }
+        return;
+    }
+    bulkUpdateMutation.mutate({ ids, updates });
+  };
+
+  const handleCsvExport = async () => {
+    try {
+      const res = await fetch("/api/admin/products/export");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `urunler-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "CSV dosyası indirildi" });
+    } catch {
+      toast({ title: "Dışa aktarma başarısız", variant: "destructive" });
+    }
+  };
 
   const createMutation = useMutation({
     mutationFn: (data: any) => apiRequest("POST", "/api/admin/products", data),
@@ -160,10 +228,42 @@ export default function ProductsTab() {
     <div data-testid="admin-products">
       <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
         <h3 className="text-lg font-semibold">Ürün Yönetimi ({products.length})</h3>
-        <Button onClick={() => { setShowForm(!showForm); if (showForm) resetForm(); else setEditingId(null); }} data-testid="button-toggle-product-form">
-          <Plus className="w-4 h-4 mr-2" /> Yeni Ürün
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Ürün ara..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              className="pl-9 w-48"
+              data-testid="input-search-products"
+            />
+          </div>
+          <Button variant="outline" onClick={handleCsvExport} data-testid="button-csv-export">
+            <Download className="w-4 h-4 mr-2" /> CSV
+          </Button>
+          <Button onClick={() => { setShowForm(!showForm); if (showForm) resetForm(); else setEditingId(null); }} data-testid="button-toggle-product-form">
+            <Plus className="w-4 h-4 mr-2" /> Yeni Ürün
+          </Button>
+        </div>
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-2 mb-4 p-3 bg-primary/10 border border-primary/30 rounded-lg flex-wrap" data-testid="bulk-actions-bar">
+          <span className="text-sm font-medium">{selectedIds.size} ürün seçildi</span>
+          <div className="flex gap-1.5 flex-wrap">
+            <Button size="sm" variant="outline" onClick={() => handleBulkAction("activate")} data-testid="button-bulk-activate">Aktif Et</Button>
+            <Button size="sm" variant="outline" onClick={() => handleBulkAction("deactivate")} data-testid="button-bulk-deactivate">Pasif Et</Button>
+            <Button size="sm" variant="outline" onClick={() => handleBulkAction("featured")} data-testid="button-bulk-featured">Öne Çıkar</Button>
+            <Button size="sm" variant="outline" onClick={() => handleBulkAction("unfeatured")} data-testid="button-bulk-unfeatured">Öne Çıkarmadan Kaldır</Button>
+            <Button size="sm" variant="outline" onClick={() => handleBulkAction("bestseller")} data-testid="button-bulk-bestseller">Çok Satan Yap</Button>
+            <Button size="sm" variant="destructive" onClick={() => handleBulkAction("delete")} data-testid="button-bulk-delete">
+              <Trash2 className="w-3.5 h-3.5 mr-1" /> Sil
+            </Button>
+          </div>
+          <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())} data-testid="button-clear-selection">Temizle</Button>
+        </div>
+      )}
 
       {showForm && (
         <Card className="mb-6">
@@ -537,8 +637,19 @@ export default function ProductsTab() {
       )}
 
       <div className="space-y-2">
-        {products.map((product) => (
-          <div key={product.id} className="flex items-center gap-4 p-3 bg-card border border-border rounded-md" data-testid={`admin-product-${product.id}`}>
+        {filteredProducts.length > 0 && (
+          <div className="flex items-center gap-2 mb-2 px-3">
+            <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-primary transition-colors" data-testid="button-select-all">
+              {selectedIds.size === filteredProducts.length && filteredProducts.length > 0 ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+            </button>
+            <span className="text-xs text-muted-foreground">Tümünü Seç ({filteredProducts.length})</span>
+          </div>
+        )}
+        {filteredProducts.map((product) => (
+          <div key={product.id} className={`flex items-center gap-4 p-3 bg-card border rounded-md transition-colors ${selectedIds.has(product.id) ? "border-primary/50 bg-primary/5" : "border-border"}`} data-testid={`admin-product-${product.id}`}>
+            <button onClick={() => toggleSelect(product.id)} className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0" data-testid={`checkbox-product-${product.id}`}>
+              {selectedIds.has(product.id) ? <CheckSquare className="w-4 h-4 text-primary" /> : <Square className="w-4 h-4" />}
+            </button>
             <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex-shrink-0">
               {product.images?.[0] && <img src={product.images[0]} alt="" className="w-full h-full object-cover" />}
             </div>
@@ -549,6 +660,7 @@ export default function ProductsTab() {
             <div className="flex items-center gap-1 flex-wrap">
               {product.isFeatured && <Badge variant="secondary" className="text-xs">Öne Çıkan</Badge>}
               {product.isBestSeller && <Badge variant="secondary" className="text-xs">Çok Satan</Badge>}
+              {(product.stock ?? 0) <= 5 && <Badge variant="secondary" className="text-xs bg-red-500/20 text-red-400">Düşük Stok</Badge>}
             </div>
             <span className="text-sm font-bold">{formatPrice(product.price)}</span>
             <div className="flex gap-1">

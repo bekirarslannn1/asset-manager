@@ -24,7 +24,8 @@ import {
   type BlogPost, type InsertBlogPost,
   type BlogComment, type InsertBlogComment,
   type Campaign, type InsertCampaign,
-  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, bundles, testimonials, paymentMethods, blogCategories, blogPosts, blogComments, campaigns,
+  type AbandonedCart, type InsertAbandonedCart,
+  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, bundles, testimonials, paymentMethods, blogCategories, blogPosts, blogComments, campaigns, abandonedCarts,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, ilike, desc, asc, gte, lte, sql, count, sum } from "drizzle-orm";
@@ -695,6 +696,23 @@ export class DatabaseStorage {
   }
   async deleteCampaign(id: number): Promise<void> {
     await db.delete(campaigns).where(eq(campaigns.id, id));
+  }
+
+  async getAbandonedCarts(): Promise<AbandonedCart[]> {
+    return await db.select().from(abandonedCarts).orderBy(desc(abandonedCarts.createdAt));
+  }
+
+  async saveAbandonedCart(data: InsertAbandonedCart): Promise<AbandonedCart> {
+    const [cart] = await db.insert(abandonedCarts).values(data).returning();
+    return cart;
+  }
+
+  async recoverAbandonedCart(id: number): Promise<void> {
+    await db.update(abandonedCarts).set({ isRecovered: true }).where(eq(abandonedCarts.id, id));
+  }
+
+  async getLowStockProducts(threshold = 10): Promise<Product[]> {
+    return await db.select().from(products).where(and(eq(products.isActive, true), lte(products.stock, threshold))).orderBy(asc(products.stock));
   }
 }
 

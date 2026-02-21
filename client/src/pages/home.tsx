@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, ArrowRight, Send, Sparkles, Tag, Gift, Percent, ShoppingBag, Target, Search, Star, Quote } from "lucide-react";
 import ProductCard from "@/components/product-card";
 import { useSettings } from "@/hooks/use-settings";
+import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Product, Category, Brand, Banner, Coupon, Campaign, PageLayout, Testimonial } from "@shared/schema";
@@ -441,6 +442,43 @@ function TestimonialsSection() {
   );
 }
 
+function RecentlyViewedSection() {
+  const { getRecentlyViewedIds } = useRecentlyViewed();
+  const recentIds = getRecentlyViewedIds();
+  const { data: allProducts = [] } = useQuery<Product[]>({
+    queryKey: ["/api/products"],
+    enabled: recentIds.length > 0,
+  });
+
+  if (recentIds.length === 0) return null;
+
+  const recentProducts = recentIds
+    .map((id) => allProducts.find((p) => p.id === id))
+    .filter((p): p is Product => !!p);
+
+  if (recentProducts.length === 0) return null;
+
+  return (
+    <section className="py-8" data-testid="recently-viewed-section">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold font-heading">Son Görüntülenen Ürünler</h2>
+          <Link href="/urunler">
+            <span className="text-sm text-primary hover:underline flex items-center gap-1 cursor-pointer">
+              Tümünü Gör <ArrowRight className="w-4 h-4" />
+            </span>
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {recentProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 const SECTION_MAP: Record<string, () => JSX.Element | null> = {
   hero_slider: () => <HeroSlider />,
   categories_grid: () => <CategoryShowcase />,
@@ -452,6 +490,7 @@ const SECTION_MAP: Record<string, () => JSX.Element | null> = {
   wizard_promo: () => <WizardPromoSection />,
   campaigns: () => <CampaignsSection />,
   testimonials: () => <TestimonialsSection />,
+  recently_viewed: () => <RecentlyViewedSection />,
   banner_strip: () => <HeroSlider />,
   advantages_bar: () => null,
 };
@@ -485,6 +524,7 @@ function DefaultHomepage() {
       <BrandShowcase />
       <ProductSection title="Öne Çıkan Ürünler" queryKey="/api/products/featured" linkHref="/urunler?featured=true" />
       <TestimonialsSection />
+      <RecentlyViewedSection />
       <NewsletterSection />
     </>
   );

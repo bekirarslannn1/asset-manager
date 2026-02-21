@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCart } from "@/hooks/use-cart";
 import { useAuth } from "@/hooks/use-auth";
 import { useSettings } from "@/hooks/use-settings";
+import { useCompare } from "@/hooks/use-compare";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ShoppingCart, Heart, Search, Menu, X, Phone, Mail, MapPin,
   ChevronDown, User, Package, Truck, Shield, Award, MessageCircle,
-  Instagram, Twitter, Facebook, Youtube, LogOut, Settings,
+  Instagram, Twitter, Facebook, Youtube, LogOut, Settings, ArrowLeftRight,
 } from "lucide-react";
 import type { Category, NavigationLink } from "@shared/schema";
 
@@ -554,6 +555,55 @@ function WhatsAppButton() {
   );
 }
 
+function ScrollToTop() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setVisible(window.scrollY > 400);
+    window.addEventListener("scroll", handler, { passive: true });
+    return () => window.removeEventListener("scroll", handler);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <button
+      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      className="fixed bottom-20 right-6 z-40 bg-primary text-primary-foreground p-3 rounded-full shadow-lg hover:scale-110 transition-transform"
+      data-testid="button-scroll-top"
+      aria-label="Yukarı çık"
+    >
+      <ChevronDown className="w-5 h-5 rotate-180" />
+    </button>
+  );
+}
+
+function CompareBar() {
+  const { compareCount } = useCompare();
+  const [, setLocation] = useLocation();
+
+  if (compareCount === 0) return null;
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-lg" data-testid="compare-bar">
+      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm">
+          <ArrowLeftRight className="w-4 h-4 text-primary flex-shrink-0" />
+          <span className="font-medium">{compareCount} ürün karşılaştırmada</span>
+        </div>
+        <Button
+          size="sm"
+          className="neon-glow"
+          onClick={() => setLocation("/karsilastir")}
+          data-testid="button-compare-go"
+        >
+          Karşılaştır
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { settings } = useSettings();
 
@@ -611,6 +661,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </main>
       <Footer />
       <WhatsAppButton />
+      <ScrollToTop />
+      <CompareBar />
     </div>
   );
 }

@@ -1,16 +1,22 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star, ShoppingCart, Heart, Minus, Plus, Truck, Shield, RotateCcw, ChevronRight, Tag } from "lucide-react";
+import { Star, ShoppingCart, Heart, Minus, Plus, Truck, Shield, RotateCcw, ChevronRight, Tag, Share2 } from "lucide-react";
+import { SiFacebook, SiX, SiWhatsapp, SiTelegram } from "react-icons/si";
 import { formatPrice, discountPercent } from "@/lib/utils";
 import { useCart } from "@/hooks/use-cart";
 import { useFavorites } from "@/hooks/use-favorites";
 import ProductCard from "@/components/product-card";
 import { ProductJsonLd } from "@/components/seo-head";
 import type { Product, Review, ProductVariant } from "@shared/schema";
+import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -24,13 +30,44 @@ export default function ProductDetailPage() {
     enabled: !!product?.id,
   });
   const { data: featured = [] } = useQuery<Product[]>({ queryKey: ["/api/products/featured"] });
+  const { addToRecentlyViewed } = useRecentlyViewed();
+
+  useEffect(() => {
+    if (product?.id) {
+      addToRecentlyViewed(product.id);
+    }
+  }, [product?.id]);
 
   const { addToCart, isAdding } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
+  const { toast } = useToast();
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedFlavor, setSelectedFlavor] = useState("");
   const [selectedWeight, setSelectedWeight] = useState("");
   const [quantity, setQuantity] = useState(1);
+
+  const [reviewName, setReviewName] = useState("");
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewHoverRating, setReviewHoverRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+
+  const reviewMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/reviews", {
+        productId: product?.id,
+        userName: reviewName,
+        rating: reviewRating,
+        comment: reviewComment || undefined,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products", product?.id, "reviews"] });
+      toast({ title: "Yorumunuz g\u00F6nderildi", description: "De\u011Ferlendirmeniz i\u00E7in te\u015Fekk\u00FCr ederiz." });
+      setReviewName("");
+      setReviewRating(0);
+      setReviewComment("");
+    },
+  });
 
   const hasVariants = variants.length > 0;
 
@@ -248,6 +285,51 @@ export default function ProductDetailPage() {
           {displaySku && (
             <p className="text-xs text-muted-foreground mt-4">SKU: {displaySku}</p>
           )}
+
+          <div className="mt-6 pt-4 border-t border-border">
+            <div className="flex items-center gap-3">
+              <Share2 className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Paylaş:</span>
+              <div className="flex gap-2">
+                <a
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg bg-muted hover:bg-blue-500/20 hover:text-blue-400 transition-colors"
+                  data-testid="button-share-facebook"
+                >
+                  <SiFacebook className="w-4 h-4" />
+                </a>
+                <a
+                  href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(product.name)}&url=${encodeURIComponent(window.location.href)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg bg-muted hover:bg-foreground/10 hover:text-foreground transition-colors"
+                  data-testid="button-share-twitter"
+                >
+                  <SiX className="w-4 h-4" />
+                </a>
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(product.name + " " + window.location.href)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg bg-muted hover:bg-green-500/20 hover:text-green-400 transition-colors"
+                  data-testid="button-share-whatsapp"
+                >
+                  <SiWhatsapp className="w-4 h-4" />
+                </a>
+                <a
+                  href={`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(product.name)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg bg-muted hover:bg-blue-400/20 hover:text-blue-300 transition-colors"
+                  data-testid="button-share-telegram"
+                >
+                  <SiTelegram className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -307,19 +389,89 @@ export default function ProductDetailPage() {
               ))}
             </div>
           )}
+
+          <div className="bg-card border border-border rounded-xl p-6 mt-8" data-testid="review-form">
+            <h3 className="font-bold text-lg mb-4">Yorum Yaz</h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!reviewName.trim() || reviewRating === 0) return;
+                reviewMutation.mutate();
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Ad Soyad *</label>
+                <Input
+                  value={reviewName}
+                  onChange={(e) => setReviewName(e.target.value)}
+                  placeholder="Adınızı girin"
+                  required
+                  data-testid="input-review-name"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Puanınız *</label>
+                <div className="flex gap-1" data-testid="input-review-rating">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setReviewRating(i + 1)}
+                      onMouseEnter={() => setReviewHoverRating(i + 1)}
+                      onMouseLeave={() => setReviewHoverRating(0)}
+                      className="p-0.5"
+                      data-testid={`button-review-star-${i + 1}`}
+                    >
+                      <Star
+                        className={`w-6 h-6 transition-colors ${
+                          i < (reviewHoverRating || reviewRating)
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "text-muted"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Yorumunuz</label>
+                <Textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Ürün hakkındaki düşüncelerinizi yazın..."
+                  rows={4}
+                  data-testid="input-review-comment"
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={reviewMutation.isPending || !reviewName.trim() || reviewRating === 0}
+                data-testid="button-submit-review"
+              >
+                {reviewMutation.isPending ? "Gönderiliyor..." : "Yorum Gönder"}
+              </Button>
+            </form>
+          </div>
         </TabsContent>
       </Tabs>
 
-      {featured.length > 0 && (
-        <section className="mt-16">
-          <h2 className="text-2xl font-bold font-heading mb-8">Benzer Ürünler</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {featured.filter(p => p.id !== product.id).slice(0, 4).map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        </section>
-      )}
+      {(() => {
+        const otherFeatured = featured.filter(p => p.id !== product.id);
+        const sameCategoryProducts = otherFeatured.filter(p => p.categoryId === product.categoryId);
+        const otherProducts = otherFeatured.filter(p => p.categoryId !== product.categoryId);
+        const relatedProducts = [...sameCategoryProducts, ...otherProducts].slice(0, 4);
+        return relatedProducts.length > 0 ? (
+          <section className="mt-16">
+            <h2 className="text-2xl font-bold font-heading mb-8">Benzer Ürünler</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {relatedProducts.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </section>
+        ) : null;
+      })()}
     </div>
   );
 }

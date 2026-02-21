@@ -1,10 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   Package, Tag, Layers, ShoppingCart, BarChart3, Users, FileText,
   TrendingUp, TrendingDown, DollarSign, ShoppingBag, AlertTriangle,
+  AlertCircle, RefreshCw, Calendar, Clock,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -12,6 +16,31 @@ import {
 } from "recharts";
 import { PIE_COLORS, STATUS_LABELS, STATUS_COLORS } from "./shared";
 import type { Order } from "@shared/schema";
+
+interface LowStockProduct {
+  id: number;
+  name: string;
+  sku: string;
+  stock: number;
+  isActive: boolean;
+}
+
+interface AbandonedCart {
+  id: number;
+  sessionId: string;
+  email: string | null;
+  items: unknown[];
+  total: string | number;
+  isRecovered: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface OrderStats {
+  daily: { orders: number; revenue: number };
+  weekly: { orders: number; revenue: number };
+  monthly: { orders: number; revenue: number };
+}
 
 interface AdminStats {
   totalRevenue: number;
@@ -43,9 +72,32 @@ interface KPIData {
 }
 
 export default function DashboardTab() {
+  const { toast } = useToast();
   const { data: stats } = useQuery<AdminStats>({ queryKey: ["/api/admin/stats"] });
   const { data: kpis } = useQuery<KPIData>({ queryKey: ["/api/admin/kpis"] });
   const { data: orders = [] } = useQuery<Order[]>({ queryKey: ["/api/orders"] });
+  const { data: lowStockProducts = [], isLoading: lowStockLoading } = useQuery<LowStockProduct[]>({
+    queryKey: ["/api/admin/low-stock?threshold=10"],
+  });
+  const { data: abandonedCarts = [], isLoading: abandonedCartsLoading } = useQuery<AbandonedCart[]>({
+    queryKey: ["/api/admin/abandoned-carts"],
+  });
+  const { data: orderStats, isLoading: orderStatsLoading } = useQuery<OrderStats>({
+    queryKey: ["/api/admin/order-stats"],
+  });
+
+  const recoverCartMutation = useMutation({
+    mutationFn: async (cartId: number) => {
+      await apiRequest("PATCH", `/api/admin/abandoned-carts/${cartId}/recover`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/abandoned-carts"] });
+      toast({ title: "Basarili", description: "Sepet kurtarma islemi baslatildi." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
 
   const mainKpis = [
     { label: "Toplam Gelir", value: formatPrice(stats?.totalRevenue || 0), icon: DollarSign, color: "text-green-400", bg: "bg-green-500/10" },
@@ -232,6 +284,153 @@ export default function DashboardTab() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6" data-testid="stock-alerts-panel">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-red-400" />
+            Dusuk Stok Uyarilari
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {lowStockLoading ? (
+            <p className="text-muted-foreground text-sm" data-testid="stock-alerts-loading">Yukleniyor...</p>
+          ) : lowStockProducts.length === 0 ? (
+            <p className="text-muted-foreground text-sm" data-testid="stock-alerts-empty">Dusuk stoklu urun bulunmuyor.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="stock-alerts-table">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">Urun Adi</th>
+                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">SKU</th>
+                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">Stok</th>
+                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">Durum</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lowStockProducts.map((product) => (
+                    <tr key={product.id} className="border-b border-border last:border-0" data-testid={`stock-row-${product.id}`}>
+                      <td className="py-2.5 px-3 font-medium" data-testid={`stock-name-${product.id}`}>{product.name}</td>
+                      <td className="py-2.5 px-3 text-muted-foreground" data-testid={`stock-sku-${product.id}`}>{product.sku}</td>
+                      <td className="py-2.5 px-3" data-testid={`stock-count-${product.id}`}>
+                        <span className={product.stock <= 3 ? "text-red-500 font-bold" : "text-orange-400 font-semibold"}>
+                          {product.stock}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3" data-testid={`stock-status-${product.id}`}>
+                        {product.stock === 0 ? (
+                          <Badge variant="secondary" className="bg-red-500/20 text-red-400">Tukendi</Badge>
+                        ) : product.stock <= 3 ? (
+                          <Badge variant="secondary" className="bg-red-500/20 text-red-400">Kritik</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-orange-500/20 text-orange-400">Dusuk</Badge>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6" data-testid="abandoned-carts-panel">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ShoppingCart className="w-5 h-5 text-orange-400" />
+            Terk Edilmis Sepetler
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {abandonedCartsLoading ? (
+            <p className="text-muted-foreground text-sm" data-testid="abandoned-carts-loading">Yukleniyor...</p>
+          ) : abandonedCarts.length === 0 ? (
+            <p className="text-muted-foreground text-sm" data-testid="abandoned-carts-empty">Terk edilmis sepet bulunmuyor.</p>
+          ) : (
+            <div className="space-y-3">
+              {abandonedCarts.map((cart) => (
+                <div
+                  key={cart.id}
+                  className="flex items-center justify-between gap-3 p-3 bg-muted/50 rounded-lg flex-wrap"
+                  data-testid={`abandoned-cart-${cart.id}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium" data-testid={`cart-identifier-${cart.id}`}>
+                        {cart.email || cart.sessionId.slice(0, 12) + "..."}
+                      </span>
+                      {cart.isRecovered ? (
+                        <Badge variant="secondary" className="bg-green-500/20 text-green-400" data-testid={`cart-status-${cart.id}`}>Kurtarildi</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="bg-orange-500/20 text-orange-400" data-testid={`cart-status-${cart.id}`}>Bekliyor</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                      <span data-testid={`cart-items-count-${cart.id}`}>{Array.isArray(cart.items) ? cart.items.length : 0} urun</span>
+                      <span data-testid={`cart-total-${cart.id}`}>{formatPrice(cart.total)}</span>
+                      <span className="flex items-center gap-1" data-testid={`cart-date-${cart.id}`}>
+                        <Clock className="w-3 h-3" />
+                        {cart.createdAt ? new Date(cart.createdAt).toLocaleDateString("tr-TR") : "-"}
+                      </span>
+                    </div>
+                  </div>
+                  {!cart.isRecovered && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={recoverCartMutation.isPending}
+                      onClick={() => recoverCartMutation.mutate(cart.id)}
+                      data-testid={`recover-cart-${cart.id}`}
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-1 ${recoverCartMutation.isPending ? "animate-spin" : ""}`} />
+                      Kurtar
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6" data-testid="order-stats-panel">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-blue-400" />
+            Siparis Istatistikleri
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {orderStatsLoading ? (
+            <p className="text-muted-foreground text-sm" data-testid="order-stats-loading">Yukleniyor...</p>
+          ) : !orderStats ? (
+            <p className="text-muted-foreground text-sm" data-testid="order-stats-empty">Istatistik verisi bulunamadi.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 bg-muted/50 rounded-lg" data-testid="order-stats-daily">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Gunluk</p>
+                <p className="text-2xl font-bold mt-1" data-testid="order-stats-daily-orders">{orderStats.daily.orders}</p>
+                <p className="text-xs text-muted-foreground">siparis</p>
+                <p className="text-sm font-semibold text-green-400 mt-1" data-testid="order-stats-daily-revenue">{formatPrice(orderStats.daily.revenue)}</p>
+              </div>
+              <div className="p-4 bg-muted/50 rounded-lg" data-testid="order-stats-weekly">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Haftalik</p>
+                <p className="text-2xl font-bold mt-1" data-testid="order-stats-weekly-orders">{orderStats.weekly.orders}</p>
+                <p className="text-xs text-muted-foreground">siparis</p>
+                <p className="text-sm font-semibold text-green-400 mt-1" data-testid="order-stats-weekly-revenue">{formatPrice(orderStats.weekly.revenue)}</p>
+              </div>
+              <div className="p-4 bg-muted/50 rounded-lg" data-testid="order-stats-monthly">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Aylik</p>
+                <p className="text-2xl font-bold mt-1" data-testid="order-stats-monthly-orders">{orderStats.monthly.orders}</p>
+                <p className="text-xs text-muted-foreground">siparis</p>
+                <p className="text-sm font-semibold text-green-400 mt-1" data-testid="order-stats-monthly-revenue">{formatPrice(orderStats.monthly.revenue)}</p>
+              </div>
             </div>
           )}
         </CardContent>
