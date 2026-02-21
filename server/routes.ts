@@ -352,9 +352,12 @@ export async function registerRoutes(
     res.json(order);
   });
 
-  app.get("/api/orders/:id/invoice", async (req, res) => {
+  app.get("/api/orders/:id/invoice", requireAuth, async (req: any, res) => {
     const order = await storage.getOrder(Number(req.params.id));
     if (!order) return res.status(404).json({ error: "Sipariş bulunamadı" });
+    const isAdmin = ["super_admin", "admin"].includes(req.user.role);
+    const isOwner = order.sessionId && req.headers["x-session-id"] === order.sessionId;
+    if (!isAdmin && !isOwner) return res.status(403).json({ error: "Bu faturaya erişim yetkiniz yok" });
 
     const items = Array.isArray(order.items) ? order.items : [];
     const address = order.shippingAddress as any || {};

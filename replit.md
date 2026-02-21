@@ -4,6 +4,22 @@
 A professional, enterprise-grade protein and supplement e-commerce platform for the Turkish market with a dark theme (#0a0a0a, #1a1a1a) and neon green accents (#39FF14). All content is 100% dynamic and manageable through admin panel. Features JWT auth, RBAC, audit logging, KVKK compliance, dynamic theme engine, SDUI page builder, and dynamic navigation.
 
 ## Recent Changes
+- 2026-02-21: Major feature expansion (16 feature groups):
+  - AI Chatbot widget (OpenAI-powered customer support)
+  - Admin Analytics Dashboard (Recharts: revenue, orders, status charts)
+  - Flash deals countdown campaigns (admin CRUD + frontend carousel with live countdown)
+  - Loyalty points system (balance, history, earn on orders)
+  - Referral system (code generation, usage tracking, reward points)
+  - Shipment tracking timeline (order tracking page + admin management)
+  - PDF invoice generation (HTML-based printable invoices)
+  - Advanced search (autocomplete dropdown, search history, keyboard navigation)
+  - Mega menu navigation (hover categories dropdown, mobile expandable)
+  - Price range slider (dual-thumb custom slider)
+  - Infinite scroll pagination (load more button with client-side pagination)
+  - AI product recommendations (product detail page)
+  - Bulk CSV import/export (admin tab)
+  - PWA support (service worker, manifest.json, offline caching)
+  - New schema tables: loyaltyPoints, referralCodes, referralUsages, shipmentTracking, flashDeals, chatMessages
 - 2026-02-21: Address book - userAddresses table, CRUD API, account "Adreslerim" tab, checkout saved address selection with auto-fill
 - 2026-02-21: Admin order notes - orderNotes table, internal notes system in order detail view
 - 2026-02-21: Admin review moderation - approve/reject/reply with adminReply column, enhanced reviews-tab
