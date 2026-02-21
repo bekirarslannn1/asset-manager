@@ -171,9 +171,13 @@ function Header() {
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
             <Link href="/" data-testid="link-home">
-              <span className="text-2xl font-bold neon-text text-primary font-heading">
-                {getSetting("site_name") || "FitSupp"}
-              </span>
+              {getSetting("logo_url") ? (
+                <img src={getSetting("logo_url")} alt={getSetting("site_name") || "FitSupp"} className="h-10 w-auto object-contain" data-testid="img-logo" />
+              ) : (
+                <span className="text-2xl font-bold neon-text text-primary font-heading">
+                  {getSetting("site_name") || "FitSupp"}
+                </span>
+              )}
             </Link>
           </div>
 
@@ -207,6 +211,11 @@ function Header() {
             <Link href="/markalar">
               <span className="px-3 py-2 text-sm font-medium hover:text-primary transition-colors rounded-md hover-elevate cursor-pointer">
                 Markalar
+              </span>
+            </Link>
+            <Link href="/supplement-sihirbazi">
+              <span className="px-3 py-2 text-sm font-medium hover:text-primary transition-colors rounded-md hover-elevate cursor-pointer" data-testid="link-wizard">
+                Sihirbaz
               </span>
             </Link>
           </nav>

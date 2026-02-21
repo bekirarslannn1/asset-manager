@@ -17,6 +17,8 @@ import StaticPage from "@/pages/static-page";
 import CheckoutPage from "@/pages/checkout";
 import { LoginPage, RegisterPage } from "@/pages/auth";
 import AdminPage from "@/pages/admin";
+import SupplementWizardPage from "@/pages/supplement-wizard";
+import SeoHead from "@/components/seo-head";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -35,6 +37,7 @@ function Router() {
         <Route path="/giris" component={LoginPage} />
         <Route path="/uye-ol" component={RegisterPage} />
         <Route path="/admin" component={AdminPage} />
+        <Route path="/supplement-sihirbazi" component={SupplementWizardPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
@@ -46,6 +49,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ThemeEngine />
+        <SeoHead />
         <Toaster />
         <Router />
         <CookieConsent />

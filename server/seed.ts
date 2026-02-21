@@ -346,6 +346,14 @@ export async function seedDatabase() {
     { key: "twitter", value: "https://twitter.com/fitsupp", type: "text" },
     { key: "facebook", value: "https://facebook.com/fitsupp", type: "text" },
     { key: "youtube", value: "https://youtube.com/fitsupp", type: "text" },
+    { key: "logo_url", value: "", type: "text" },
+    { key: "favicon_url", value: "", type: "text" },
+    { key: "seo_title", value: "FitSupp - Türkiye'nin En Güvenilir Supplement Mağazası", type: "text" },
+    { key: "seo_description", value: "Orijinal ürün garantisi ile whey protein, kreatin, BCAA, vitamin ve tüm sporcu gıdaları. Hızlı kargo, güvenli ödeme.", type: "text" },
+    { key: "seo_keywords", value: "protein tozu, supplement, whey protein, kreatin, bcaa, sporcu gıdası, fitness takviye", type: "text" },
+    { key: "og_image", value: "", type: "text" },
+    { key: "tiktok", value: "", type: "text" },
+    { key: "footer_text", value: "Tüm hakları saklıdır.", type: "text" },
   ];
   await db.insert(siteSettings).values(settingsData);
 

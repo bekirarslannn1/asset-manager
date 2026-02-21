@@ -986,54 +986,137 @@ function SettingsTab() {
 
   const getVal = (key: string) => editValues[key] ?? settings.find((s) => s.key === key)?.value ?? "";
 
-  const settingLabels: Record<string, string> = {
-    site_name: "Site Adı",
-    site_description: "Site Açıklaması",
-    phone: "Telefon",
-    email: "E-posta",
-    whatsapp: "WhatsApp Numarası",
-    address: "Adres",
-    free_shipping_threshold: "Ücretsiz Kargo Limiti",
-    announcement_text: "Duyuru Çubuğu",
-    primary_color: "Ana Renk",
-    secondary_color: "İkincil Renk",
-    accent_color: "Vurgu Rengi",
-    background_color: "Arka Plan Rengi",
-    card_color: "Kart Rengi",
-    text_color: "Metin Rengi",
-    font_heading: "Başlık Fontu",
-    font_body: "Gövde Fontu",
-    border_radius: "Kenarlık Yarıçapı",
-    instagram: "Instagram URL",
-    twitter: "Twitter URL",
-    facebook: "Facebook URL",
-    youtube: "YouTube URL",
+  const saveField = (key: string) => {
+    saveMutation.mutate({ key, value: getVal(key) });
   };
 
+  const settingGroups = [
+    {
+      title: "Genel Ayarlar",
+      fields: [
+        { key: "site_name", label: "Site Adi", type: "text" },
+        { key: "site_description", label: "Site Aciklamasi", type: "text" },
+        { key: "logo_url", label: "Logo URL", type: "text", placeholder: "https://example.com/logo.png" },
+        { key: "favicon_url", label: "Favicon URL", type: "text", placeholder: "https://example.com/favicon.ico" },
+        { key: "announcement_text", label: "Duyuru Cubugu", type: "text" },
+        { key: "free_shipping_threshold", label: "Ucretsiz Kargo Limiti", type: "text" },
+        { key: "footer_text", label: "Footer Metni", type: "text" },
+      ],
+    },
+    {
+      title: "SEO Ayarlari",
+      fields: [
+        { key: "seo_title", label: "SEO Baslik (Title Tag)", type: "text", placeholder: "Site Adi - Aciklama" },
+        { key: "seo_description", label: "Meta Aciklama", type: "text", placeholder: "Arama motorlarinda gorunecek aciklama" },
+        { key: "seo_keywords", label: "Anahtar Kelimeler", type: "text", placeholder: "kelime1, kelime2, kelime3" },
+        { key: "og_image", label: "OG Image URL", type: "text", placeholder: "Sosyal medya paylasim gorseli" },
+      ],
+    },
+    {
+      title: "Iletisim Bilgileri",
+      fields: [
+        { key: "phone", label: "Telefon", type: "text" },
+        { key: "email", label: "E-posta", type: "text" },
+        { key: "whatsapp", label: "WhatsApp Numarasi", type: "text", placeholder: "905xxxxxxxxx" },
+        { key: "address", label: "Adres", type: "text" },
+      ],
+    },
+    {
+      title: "Sosyal Medya",
+      fields: [
+        { key: "instagram", label: "Instagram URL", type: "text" },
+        { key: "twitter", label: "Twitter / X URL", type: "text" },
+        { key: "facebook", label: "Facebook URL", type: "text" },
+        { key: "youtube", label: "YouTube URL", type: "text" },
+        { key: "tiktok", label: "TikTok URL", type: "text" },
+      ],
+    },
+    {
+      title: "Tema ve Gorunum",
+      fields: [
+        { key: "primary_color", label: "Ana Renk", type: "color" },
+        { key: "secondary_color", label: "Ikincil Renk", type: "color" },
+        { key: "accent_color", label: "Vurgu Rengi", type: "color" },
+        { key: "background_color", label: "Arka Plan Rengi", type: "color" },
+        { key: "card_color", label: "Kart Rengi", type: "color" },
+        { key: "text_color", label: "Metin Rengi", type: "color" },
+        { key: "font_heading", label: "Baslik Fontu", type: "text" },
+        { key: "font_body", label: "Govde Fontu", type: "text" },
+        { key: "border_radius", label: "Kenarlik Yaricapi", type: "text" },
+      ],
+    },
+  ];
+
+  const groupedKeys = settingGroups.flatMap(g => g.fields.map(f => f.key));
+  const ungroupedSettings = settings.filter(s => s.key && !groupedKeys.includes(s.key));
+
   return (
-    <div className="space-y-4" data-testid="admin-settings">
-      {settings.map((setting) => (
-        <div key={setting.id} className="flex items-center gap-3 p-3 bg-card border border-border rounded-md flex-wrap" data-testid={`setting-${setting.key}`}>
-          <label className="text-sm font-medium w-48 flex-shrink-0">
-            {settingLabels[setting.key!] || setting.key}
-          </label>
-          <Input
-            value={getVal(setting.key!)}
-            onChange={(e) => setEditValues((p) => ({ ...p, [setting.key!]: e.target.value }))}
-            className="flex-1"
-            type={setting.type === "color" ? "color" : "text"}
-            data-testid={`input-setting-${setting.key}`}
-          />
-          <Button
-            size="icon"
-            variant="outline"
-            onClick={() => saveMutation.mutate({ key: setting.key!, value: getVal(setting.key!) })}
-            data-testid={`button-save-setting-${setting.key}`}
-          >
-            <Save className="w-4 h-4" />
-          </Button>
-        </div>
+    <div className="space-y-6" data-testid="admin-settings">
+      {settingGroups.map((group) => (
+        <Card key={group.title}>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">{group.title}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {group.fields.map((field) => (
+              <div key={field.key} className="flex items-center gap-3 flex-wrap" data-testid={`setting-${field.key}`}>
+                <label className="text-sm font-medium w-52 flex-shrink-0 text-muted-foreground">
+                  {field.label}
+                </label>
+                <Input
+                  value={getVal(field.key)}
+                  onChange={(e) => setEditValues((p) => ({ ...p, [field.key]: e.target.value }))}
+                  className="flex-1 min-w-[200px]"
+                  placeholder={field.placeholder || ""}
+                  type={field.type === "color" ? "color" : "text"}
+                  data-testid={`input-setting-${field.key}`}
+                />
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => saveField(field.key)}
+                  disabled={saveMutation.isPending}
+                  data-testid={`button-save-setting-${field.key}`}
+                >
+                  <Save className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       ))}
+      {ungroupedSettings.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Diger Ayarlar</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {ungroupedSettings.map((setting) => (
+              <div key={setting.id} className="flex items-center gap-3 flex-wrap" data-testid={`setting-${setting.key}`}>
+                <label className="text-sm font-medium w-52 flex-shrink-0 text-muted-foreground">
+                  {setting.key}
+                </label>
+                <Input
+                  value={getVal(setting.key!)}
+                  onChange={(e) => setEditValues((p) => ({ ...p, [setting.key!]: e.target.value }))}
+                  className="flex-1 min-w-[200px]"
+                  type={setting.type === "color" ? "color" : "text"}
+                  data-testid={`input-setting-${setting.key}`}
+                />
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => saveField(setting.key!)}
+                  disabled={saveMutation.isPending}
+                  data-testid={`button-save-setting-${setting.key}`}
+                >
+                  <Save className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

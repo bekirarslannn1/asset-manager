@@ -493,6 +493,60 @@ export async function registerRoutes(
     res.json(await storage.getCoupons());
   });
 
+  app.get("/api/coupons/active", async (_req, res) => {
+    const allCoupons = await storage.getCoupons();
+    const active = allCoupons.filter((c: any) => c.isActive && (!c.expiresAt || new Date(c.expiresAt) > new Date()));
+    res.json(active);
+  });
+
+  app.get("/api/wizard/recommendations", async (req, res) => {
+    const { gender, goal, experience } = req.query as { gender?: string; goal?: string; experience?: string };
+    const allProducts = await storage.getProducts();
+    const activeProducts = allProducts.filter((p: any) => p.isActive && Number(p.stock) > 0);
+
+    const goalCategoryMap: Record<string, string[]> = {
+      "kas-gelistirme": ["protein-tozu", "kreatin", "kilo-hacim", "amino-asit-bcaa"],
+      "yag-yakimi": ["diyet-zayiflama", "pre-workout", "amino-asit-bcaa"],
+      "dayaniklilik": ["pre-workout", "amino-asit-bcaa", "vitamin-mineral"],
+      "genel-saglik": ["vitamin-mineral", "saglik-yasam", "spor-gidalari"],
+      "kilo-alma": ["kilo-hacim", "protein-tozu", "kreatin", "spor-gidalari"],
+    };
+
+    const experienceLimit: Record<string, number> = {
+      "yeni-baslayan": 3,
+      "orta-seviye": 4,
+      "ileri-seviye": 6,
+    };
+
+    const targetSlugs = goal ? (goalCategoryMap[goal] || []) : [];
+    const allCategories = await storage.getCategories();
+    const targetCatIds = allCategories
+      .filter((c: any) => targetSlugs.includes(c.slug))
+      .map((c: any) => c.id);
+
+    let recommended = activeProducts;
+    if (targetCatIds.length > 0) {
+      recommended = activeProducts.filter((p: any) => targetCatIds.includes(p.categoryId));
+    }
+
+    if (gender && recommended.length > 0) {
+      const genderTagged = recommended.filter((p: any) =>
+        p.tags && Array.isArray(p.tags) && p.tags.includes(gender)
+      );
+      if (genderTagged.length > 0) recommended = genderTagged;
+    }
+
+    recommended.sort((a: any, b: any) => {
+      if (a.isBestSeller && !b.isBestSeller) return -1;
+      if (!a.isBestSeller && b.isBestSeller) return 1;
+      if (a.isFeatured && !b.isFeatured) return -1;
+      return 0;
+    });
+
+    const limit = experience ? (experienceLimit[experience] || 4) : 4;
+    res.json(recommended.slice(0, limit));
+  });
+
   app.get("/api/admin/audit-logs", async (req, res) => {
     const entity = req.query.entity as string | undefined;
     if (entity) {

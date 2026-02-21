@@ -3,12 +3,12 @@ import { Link } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, ArrowRight, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight, Send, Sparkles, Tag, Gift, Percent, ShoppingBag, Target, Search } from "lucide-react";
 import ProductCard from "@/components/product-card";
 import { useSettings } from "@/hooks/use-settings";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Product, Category, Brand, Banner } from "@shared/schema";
+import type { Product, Category, Brand, Banner, Coupon } from "@shared/schema";
 
 function HeroSlider() {
   const { data: banners = [] } = useQuery<Banner[]>({ queryKey: ["/api/banners?type=hero"] });
@@ -169,28 +169,160 @@ function ProductSection({ title, queryKey, linkHref }: { title: string; queryKey
   );
 }
 
+function WizardPromoSection() {
+  return (
+    <section className="py-16" data-testid="wizard-promo">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-background border border-primary/20">
+          <div className="absolute top-0 right-0 w-1/3 h-full opacity-10">
+            <div className="w-full h-full bg-gradient-to-l from-primary to-transparent" />
+          </div>
+          <div className="relative p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
+            <div className="flex-1">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/20 border border-primary/30 rounded-full text-primary text-sm font-medium mb-4">
+                <Sparkles className="w-4 h-4" /> Supplement Sihirbazı
+              </div>
+              <h2 className="text-2xl md:text-3xl font-bold font-heading mb-3" data-testid="text-wizard-promo-title">
+                3 Soruda Sana Özel Supplement Paketi
+              </h2>
+              <p className="text-muted-foreground mb-6 max-w-lg">
+                Hedefine en uygun ürünleri bul! Cinsiyet, hedef ve deneyim seviyene göre kişiselleştirilmiş öneriler al.
+              </p>
+              <Link href="/supplement-sihirbazi">
+                <Button className="neon-glow text-base px-6 py-5" data-testid="button-wizard-promo-cta">
+                  <Sparkles className="w-4 h-4 mr-2" /> Hemen Başla
+                </Button>
+              </Link>
+            </div>
+            <div className="flex gap-4 text-center">
+              {[
+                { icon: Target, label: "Hedef Belirle" },
+                { icon: Search, label: "Analiz Et" },
+                { icon: ShoppingBag, label: "Sonuclari Al" },
+              ].map((step, i) => {
+                const Icon = step.icon;
+                return (
+                  <div key={i} className="flex flex-col items-center gap-2 p-4 bg-card/50 border border-border rounded-xl min-w-[100px]">
+                    <Icon className="w-8 h-8 text-primary" />
+                    <span className="text-xs font-medium">{step.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CampaignsSection() {
+  const { data: coupons = [] } = useQuery<Coupon[]>({ queryKey: ["/api/coupons/active"] });
+
+  if (!coupons.length) return null;
+
+  const icons = [Tag, Gift, Percent, ShoppingBag];
+
+  return (
+    <section className="py-12" data-testid="campaigns-section">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-2xl font-bold font-heading">Aktif Kampanyalar</h2>
+          <span className="text-sm text-muted-foreground">Fırsatları kaçırma!</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {coupons.slice(0, 4).map((coupon, i) => {
+            const Icon = icons[i % icons.length];
+            return (
+              <div
+                key={coupon.id}
+                className="p-5 rounded-xl border border-border bg-card hover:border-primary/30 transition-all group"
+                data-testid={`card-campaign-${coupon.id}`}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-sm">
+                    {coupon.discountType === "percentage"
+                      ? `%${coupon.discountValue} İndirim`
+                      : `${coupon.discountValue}₺ İndirim`}
+                  </h3>
+                </div>
+                {coupon.minOrderAmount && (
+                  <p className="text-xs text-muted-foreground mb-3">
+                    {coupon.minOrderAmount}₺ ve üzeri alışverişlerde geçerli
+                  </p>
+                )}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium">Kod:</span>
+                  <code className="px-2 py-1 bg-primary/10 border border-primary/20 rounded text-primary text-xs font-mono font-bold">
+                    {coupon.code}
+                  </code>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function BrandShowcase() {
   const { data: brands = [] } = useQuery<Brand[]>({ queryKey: ["/api/brands"] });
+  const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
+
+  const brandCountries: Record<string, string> = {
+    "optimum-nutrition": "ABD",
+    "muscletech": "ABD",
+    "bsn": "ABD",
+    "dymatize": "ABD",
+    "myprotein": "İngiltere",
+    "hardline": "Türkiye",
+    "bigjoy": "Türkiye",
+    "proteinmarket": "Türkiye",
+    "ultimate-nutrition": "ABD",
+    "cellucor": "ABD",
+  };
 
   return (
     <section className="py-12 bg-card" data-testid="brand-showcase">
       <div className="max-w-7xl mx-auto px-4">
-        <h2 className="text-2xl font-bold font-heading text-center mb-8">Markalar</h2>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6">
-          {brands.map((brand) => (
-            <Link key={brand.id} href={`/urunler?brandId=${brand.id}`}>
-              <div className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border hover:border-primary/30 transition-all cursor-pointer bg-background" data-testid={`card-brand-${brand.id}`}>
-                {brand.logo ? (
-                  <img src={brand.logo} alt={brand.name} className="h-10 w-auto object-contain" />
-                ) : (
-                  <div className="h-10 flex items-center justify-center text-sm font-bold text-primary">
-                    {brand.name.substring(0, 2)}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-2xl font-bold font-heading">Popüler Markalar</h2>
+            <p className="text-sm text-muted-foreground mt-1">Dünya'nın en iyi markaları</p>
+          </div>
+          <Link href="/markalar">
+            <span className="text-sm text-primary hover:underline flex items-center gap-1 cursor-pointer">
+              Tüm Markalar <ArrowRight className="w-4 h-4" />
+            </span>
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {brands.map((brand) => {
+            const productCount = products.filter(p => p.brandId === brand.id && p.isActive).length;
+            const country = brandCountries[brand.slug] || "";
+            return (
+              <Link key={brand.id} href={`/urunler?brandId=${brand.id}`}>
+                <div className="flex flex-col items-center gap-3 p-5 rounded-xl border border-border hover:border-primary/30 transition-all cursor-pointer bg-background group" data-testid={`card-brand-${brand.id}`}>
+                  {brand.logo ? (
+                    <img src={brand.logo} alt={brand.name} className="h-12 w-auto object-contain group-hover:scale-110 transition-transform" />
+                  ) : (
+                    <div className="h-12 w-12 flex items-center justify-center text-lg font-bold text-primary bg-primary/10 rounded-lg">
+                      {brand.name.substring(0, 1)}
+                    </div>
+                  )}
+                  <div className="text-center">
+                    <span className="text-sm font-semibold block">{brand.name}</span>
+                    {country && <span className="text-xs text-muted-foreground">{country}</span>}
+                    <span className="text-xs text-primary block mt-1">{productCount} ürün</span>
                   </div>
-                )}
-                <span className="text-xs text-muted-foreground text-center">{brand.name}</span>
-              </div>
-            </Link>
-          ))}
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -241,10 +373,12 @@ export default function HomePage() {
     <>
       <HeroSlider />
       <CategoryShowcase />
-      <ProductSection title="Öne Çıkan Ürünler" queryKey="/api/products/featured" linkHref="/urunler?featured=true" />
       <ProductSection title="Çok Satanlar" queryKey="/api/products/best-sellers" linkHref="/urunler?sort=best_seller" />
-      <BrandShowcase />
+      <WizardPromoSection />
       <ProductSection title="Yeni Ürünler" queryKey="/api/products/new-arrivals" linkHref="/urunler?sort=newest" />
+      <CampaignsSection />
+      <BrandShowcase />
+      <ProductSection title="Öne Çıkan Ürünler" queryKey="/api/products/featured" linkHref="/urunler?featured=true" />
       <NewsletterSection />
     </>
   );
