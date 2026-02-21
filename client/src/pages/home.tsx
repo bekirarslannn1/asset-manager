@@ -8,7 +8,7 @@ import ProductCard from "@/components/product-card";
 import { useSettings } from "@/hooks/use-settings";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Product, Category, Brand, Banner, Coupon } from "@shared/schema";
+import type { Product, Category, Brand, Banner, Coupon, PageLayout } from "@shared/schema";
 
 function HeroSlider() {
   const { data: banners = [] } = useQuery<Banner[]>({ queryKey: ["/api/banners?type=hero"] });
@@ -368,7 +368,38 @@ function NewsletterSection() {
   );
 }
 
-export default function HomePage() {
+const SECTION_MAP: Record<string, () => JSX.Element | null> = {
+  hero_slider: () => <HeroSlider />,
+  categories_grid: () => <CategoryShowcase />,
+  featured_products: () => <ProductSection title="Öne Çıkan Ürünler" queryKey="/api/products/featured" linkHref="/urunler?featured=true" />,
+  best_sellers: () => <ProductSection title="Çok Satanlar" queryKey="/api/products/best-sellers" linkHref="/urunler?sort=best_seller" />,
+  new_arrivals: () => <ProductSection title="Yeni Ürünler" queryKey="/api/products/new-arrivals" linkHref="/urunler?sort=newest" />,
+  brands_carousel: () => <BrandShowcase />,
+  newsletter: () => <NewsletterSection />,
+  wizard_promo: () => <WizardPromoSection />,
+  campaigns: () => <CampaignsSection />,
+  banner_strip: () => <HeroSlider />,
+  advantages_bar: () => null,
+};
+
+function SDUIRenderer({ layout }: { layout: PageLayout }) {
+  const blocks = Array.isArray(layout.blocks) ? layout.blocks : [];
+  const sortedBlocks = [...blocks]
+    .filter((b: any) => b.isVisible !== false)
+    .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+
+  return (
+    <>
+      {sortedBlocks.map((block: any, i: number) => {
+        const renderer = SECTION_MAP[block.type];
+        if (!renderer) return null;
+        return <div key={`${block.type}-${i}`} data-testid={`sdui-block-${block.type}-${i}`}>{renderer()}</div>;
+      })}
+    </>
+  );
+}
+
+function DefaultHomepage() {
   return (
     <>
       <HeroSlider />
@@ -382,4 +413,14 @@ export default function HomePage() {
       <NewsletterSection />
     </>
   );
+}
+
+export default function HomePage() {
+  const { data: layout } = useQuery<PageLayout>({ queryKey: ["/api/layouts/homepage"] });
+
+  if (layout && Array.isArray(layout.blocks) && layout.blocks.length > 0) {
+    return <SDUIRenderer layout={layout} />;
+  }
+
+  return <DefaultHomepage />;
 }

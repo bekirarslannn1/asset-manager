@@ -13,7 +13,42 @@ import {
   ChevronDown, User, Package, Truck, Shield, Award, MessageCircle,
   Instagram, Twitter, Facebook, Youtube, LogOut, Settings,
 } from "lucide-react";
-import type { Category } from "@shared/schema";
+import type { Category, NavigationLink } from "@shared/schema";
+
+function hexToHSL(hex: string): string {
+  const hexClean = hex.replace("#", "");
+  const r = parseInt(hexClean.substring(0, 2), 16) / 255;
+  const g = parseInt(hexClean.substring(2, 4), 16) / 255;
+  const b = parseInt(hexClean.substring(4, 6), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        break;
+      case g:
+        h = ((b - r) / d + 2) / 6;
+        break;
+      case b:
+        h = ((r - g) / d + 4) / 6;
+        break;
+    }
+  }
+
+  const hDeg = Math.round(h * 360);
+  const sPercent = Math.round(s * 100);
+  const lPercent = Math.round(l * 100);
+
+  return `${hDeg} ${sPercent}% ${lPercent}%`;
+}
 
 function AnnouncementBar() {
   const { getSetting } = useSettings();
@@ -152,6 +187,7 @@ function Header() {
   const { getSetting } = useSettings();
 
   const { data: categories = [] } = useQuery<Category[]>({ queryKey: ["/api/categories"] });
+  const { data: headerNavLinks = [] } = useQuery<NavigationLink[]>({ queryKey: ["/api/navigation?position=header"] });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,6 +254,13 @@ function Header() {
                 Sihirbaz
               </span>
             </Link>
+            {headerNavLinks.map((link) => (
+              <Link key={link.id} href={link.url}>
+                <span className="px-3 py-2 text-sm font-medium hover:text-primary transition-colors rounded-md hover-elevate cursor-pointer" data-testid={`link-dynamic-nav-${link.id}`}>
+                  {link.label}
+                </span>
+              </Link>
+            ))}
           </nav>
 
           <div className="flex items-center gap-2">
@@ -273,6 +316,11 @@ function Header() {
           <Link href="/urunler" onClick={() => setMobileMenuOpen(false)}>
             <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer">Tüm Ürünler</span>
           </Link>
+          {headerNavLinks.map((link) => (
+            <Link key={link.id} href={link.url} onClick={() => setMobileMenuOpen(false)}>
+              <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer" data-testid={`mobile-link-dynamic-nav-${link.id}`}>{link.label}</span>
+            </Link>
+          ))}
           <div className="border-t border-border mt-2 pt-2">
             <MobileAuthLinks onClose={() => setMobileMenuOpen(false)} />
           </div>
@@ -308,11 +356,12 @@ function Footer() {
   const { getSetting } = useSettings();
   const { data: pages = [] } = useQuery<{ id: number; title: string; slug: string }[]>({ queryKey: ["/api/pages"] });
   const { data: categories = [] } = useQuery<Category[]>({ queryKey: ["/api/categories"] });
+  const { data: footerNavLinks = [] } = useQuery<NavigationLink[]>({ queryKey: ["/api/navigation?position=footer"] });
 
   return (
     <footer className="bg-card border-t border-border mt-auto" data-testid="footer">
       <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           <div>
             <span className="text-2xl font-bold neon-text text-primary font-heading">
               {getSetting("site_name") || "FitSupp"}
@@ -371,6 +420,19 @@ function Footer() {
           </div>
 
           <div>
+            <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider" data-testid="text-footer-quick-links">Hizli Linkler</h3>
+            <div className="space-y-2.5">
+              {footerNavLinks.map((link) => (
+                <Link key={link.id} href={link.url}>
+                  <span className="block text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer" data-testid={`link-footer-dynamic-nav-${link.id}`}>
+                    {link.label}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div>
             <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider" data-testid="text-footer-contact">İletişim</h3>
             <div className="space-y-3">
               {getSetting("phone") && (
@@ -421,6 +483,52 @@ function WhatsAppButton() {
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
+  const { settings } = useSettings();
+
+  useEffect(() => {
+    const root = document.documentElement;
+
+    settings.forEach((setting) => {
+      switch (setting.key) {
+        case "primary_color":
+          if (setting.value) {
+            root.style.setProperty("--primary", hexToHSL(setting.value));
+          }
+          break;
+        case "background_color":
+          if (setting.value) {
+            root.style.setProperty("--background", hexToHSL(setting.value));
+          }
+          break;
+        case "card_color":
+          if (setting.value) {
+            root.style.setProperty("--card", hexToHSL(setting.value));
+          }
+          break;
+        case "text_color":
+          if (setting.value) {
+            root.style.setProperty("--foreground", hexToHSL(setting.value));
+          }
+          break;
+        case "border_radius":
+          if (setting.value) {
+            root.style.setProperty("--radius", `${setting.value}rem`);
+          }
+          break;
+        case "font_heading":
+          if (setting.value) {
+            root.style.setProperty("--font-heading", setting.value);
+          }
+          break;
+        case "font_body":
+          if (setting.value) {
+            root.style.setProperty("--font-body", setting.value);
+          }
+          break;
+      }
+    });
+  }, [settings]);
+
   return (
     <div className="min-h-screen flex flex-col">
       <AnnouncementBar />
