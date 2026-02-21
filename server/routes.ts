@@ -1,7 +1,89 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { seedDatabase } from "./seed";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+
+const JWT_SECRET = process.env.SESSION_SECRET || "fitsupp-secret-key-2026";
+
+function generateToken(user: { id: number; username: string; role: string }) {
+  return jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
+}
+
+function verifyToken(token: string) {
+  try {
+    return jwt.verify(token, JWT_SECRET) as { id: number; username: string; role: string };
+  } catch {
+    return null;
+  }
+}
+
+function getTokenFromReq(req: Request) {
+  const auth = req.headers.authorization;
+  if (auth?.startsWith("Bearer ")) return auth.slice(7);
+  return req.cookies?.token || null;
+}
+
+const ROLE_PERMISSIONS: Record<string, string[]> = {
+  super_admin: ["*"],
+  admin: ["products", "categories", "brands", "banners", "pages", "settings", "orders", "coupons", "users", "variants", "layouts", "audit_logs"],
+  seller: ["products", "variants", "orders"],
+  support: ["orders", "users"],
+  logistics: ["orders"],
+  customer: [],
+};
+
+function hasPermission(role: string, module: string): boolean {
+  const perms = ROLE_PERMISSIONS[role] || [];
+  return perms.includes("*") || perms.includes(module);
+}
+
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const token = getTokenFromReq(req);
+  if (!token) return res.status(401).json({ error: "Yetkilendirme gerekli" });
+  const decoded = verifyToken(token);
+  if (!decoded) return res.status(401).json({ error: "Geçersiz oturum" });
+  (req as any).user = decoded;
+  next();
+}
+
+function requireRole(...roles: string[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ error: "Yetkilendirme gerekli" });
+    if (!roles.includes(user.role) && user.role !== "super_admin") {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok" });
+    }
+    next();
+  };
+}
+
+function requirePermission(module: string) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ error: "Yetkilendirme gerekli" });
+    if (!hasPermission(user.role, module)) {
+      return res.status(403).json({ error: "Bu modül için yetkiniz yok" });
+    }
+    next();
+  };
+}
+
+async function logAudit(req: Request, action: string, entity: string, entityId?: number, details?: any) {
+  const user = (req as any).user;
+  try {
+    await storage.createAuditLog({
+      userId: user?.id || null,
+      userName: user?.username || "anonymous",
+      action,
+      entity,
+      entityId: entityId || null,
+      details: details || null,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
+    });
+  } catch (e) {}
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -9,9 +91,47 @@ export async function registerRoutes(
 ): Promise<Server> {
   await seedDatabase();
 
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { username, email, password, fullName, phone } = req.body;
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) return res.status(400).json({ error: "Bu kullanıcı adı zaten kayıtlı" });
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) return res.status(400).json({ error: "Bu e-posta zaten kayıtlı" });
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = await storage.createUser({ username, email, password: hashedPassword, fullName, phone, role: "customer" });
+      const token = generateToken(user);
+      res.status(201).json({ user: { id: user.id, username: user.username, email: user.email, fullName: user.fullName, role: user.role }, token });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      const user = await storage.getUserByUsername(username);
+      if (!user) return res.status(401).json({ error: "Kullanıcı bulunamadı" });
+      if (!user.isActive) return res.status(403).json({ error: "Hesabınız devre dışı" });
+      const valid = await bcrypt.compare(password, user.password);
+      if (!valid) return res.status(401).json({ error: "Şifre hatalı" });
+      await storage.updateUserLogin(user.id);
+      const token = generateToken(user);
+      await logAudit(req, "login", "users", user.id);
+      res.json({ user: { id: user.id, username: user.username, email: user.email, fullName: user.fullName, role: user.role, avatar: user.avatar }, token });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get("/api/auth/me", requireAuth, async (req, res) => {
+    const user = await storage.getUser((req as any).user.id);
+    if (!user) return res.status(404).json({ error: "Kullanıcı bulunamadı" });
+    res.json({ id: user.id, username: user.username, email: user.email, fullName: user.fullName, role: user.role, avatar: user.avatar });
+  });
+
   app.get("/api/categories", async (req, res) => {
-    const cats = await storage.getCategories();
-    res.json(cats);
+    res.json(await storage.getCategories());
   });
 
   app.get("/api/categories/:slug", async (req, res) => {
@@ -21,8 +141,7 @@ export async function registerRoutes(
   });
 
   app.get("/api/brands", async (req, res) => {
-    const b = await storage.getBrands();
-    res.json(b);
+    res.json(await storage.getBrands());
   });
 
   app.get("/api/products", async (req, res) => {
@@ -37,8 +156,7 @@ export async function registerRoutes(
     if (req.query.isSugarFree === "true") filters.isSugarFree = true;
     if (req.query.sortBy) filters.sortBy = req.query.sortBy;
     if (req.query.search) filters.search = req.query.search;
-    const prods = await storage.getProducts(filters);
-    res.json(prods);
+    res.json(await storage.getProducts(filters));
   });
 
   app.get("/api/products/featured", async (req, res) => {
@@ -66,6 +184,10 @@ export async function registerRoutes(
 
   app.get("/api/products/:id/reviews", async (req, res) => {
     res.json(await storage.getReviewsByProduct(Number(req.params.id)));
+  });
+
+  app.get("/api/products/:id/variants", async (req, res) => {
+    res.json(await storage.getVariantsByProduct(Number(req.params.id)));
   });
 
   app.post("/api/reviews", async (req, res) => {
@@ -124,21 +246,6 @@ export async function registerRoutes(
     res.json(await storage.getBanners(type));
   });
 
-  app.post("/api/banners", async (req, res) => {
-    const banner = await storage.createBanner(req.body);
-    res.status(201).json(banner);
-  });
-
-  app.patch("/api/banners/:id", async (req, res) => {
-    const banner = await storage.updateBanner(Number(req.params.id), req.body);
-    res.json(banner);
-  });
-
-  app.delete("/api/banners/:id", async (req, res) => {
-    await storage.deleteBanner(Number(req.params.id));
-    res.json({ success: true });
-  });
-
   app.get("/api/settings", async (req, res) => {
     res.json(await storage.getSettings());
   });
@@ -146,11 +253,6 @@ export async function registerRoutes(
   app.get("/api/settings/:key", async (req, res) => {
     const val = await storage.getSetting(req.params.key);
     res.json({ key: req.params.key, value: val });
-  });
-
-  app.post("/api/settings", async (req, res) => {
-    const setting = await storage.setSetting(req.body.key, req.body.value, req.body.type);
-    res.json(setting);
   });
 
   app.post("/api/coupons/validate", async (req, res) => {
@@ -184,64 +286,227 @@ export async function registerRoutes(
     res.json(page);
   });
 
+  app.post("/api/consent", async (req, res) => {
+    const record = await storage.createConsentRecord(req.body);
+    res.status(201).json(record);
+  });
+
+  app.get("/api/consent/:sessionId", async (req, res) => {
+    res.json(await storage.getConsentsBySession(req.params.sessionId));
+  });
+
+  app.get("/api/layouts", async (req, res) => {
+    res.json(await storage.getPageLayouts());
+  });
+
+  app.get("/api/layouts/:slug", async (req, res) => {
+    const layout = await storage.getPageLayoutBySlug(req.params.slug);
+    if (!layout) return res.status(404).json({ error: "Layout bulunamadı" });
+    res.json(layout);
+  });
+
+  app.get("/api/admin/stats", async (req, res) => {
+    const stats = await storage.getOrderStats();
+    const productsCount = (await storage.getAllProducts()).length;
+    const categoriesCount = (await storage.getAllCategories()).length;
+    const brandsCount = (await storage.getBrands()).length;
+    const usersCount = (await storage.getUsers()).length;
+    const newsletterCount = (await storage.getNewsletters()).length;
+    res.json({ ...stats, productsCount, categoriesCount, brandsCount, usersCount, newsletterCount });
+  });
+
+  app.get("/api/admin/users", async (req, res) => {
+    const allUsers = await storage.getUsers();
+    res.json(allUsers.map(u => ({ ...u, password: undefined })));
+  });
+
+  app.post("/api/admin/users", async (req, res) => {
+    try {
+      const { username, email, password, fullName, phone, role } = req.body;
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = await storage.createUser({ username, email, password: hashedPassword, fullName, phone, role: role || "customer" });
+      await logAudit(req, "create", "users", user.id);
+      res.status(201).json({ ...user, password: undefined });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.patch("/api/admin/users/:id", async (req, res) => {
+    const data = { ...req.body };
+    if (data.password) {
+      data.password = await bcrypt.hash(data.password, 10);
+    } else {
+      delete data.password;
+    }
+    const user = await storage.updateUser(Number(req.params.id), data);
+    await logAudit(req, "update", "users", Number(req.params.id));
+    res.json(user ? { ...user, password: undefined } : null);
+  });
+
+  app.delete("/api/admin/users/:id", async (req, res) => {
+    await storage.deleteUser(Number(req.params.id));
+    await logAudit(req, "delete", "users", Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  app.post("/api/admin/users/:id/anonymize", async (req, res) => {
+    await storage.anonymizeUser(Number(req.params.id));
+    await logAudit(req, "anonymize", "users", Number(req.params.id), { reason: "KVKK Unutulma Hakkı" });
+    res.json({ success: true });
+  });
+
   app.post("/api/admin/categories", async (req, res) => {
     const cat = await storage.createCategory(req.body);
+    await logAudit(req, "create", "categories", cat.id);
     res.status(201).json(cat);
   });
 
   app.patch("/api/admin/categories/:id", async (req, res) => {
     const cat = await storage.updateCategory(Number(req.params.id), req.body);
+    await logAudit(req, "update", "categories", Number(req.params.id));
     res.json(cat);
   });
 
   app.delete("/api/admin/categories/:id", async (req, res) => {
     await storage.deleteCategory(Number(req.params.id));
+    await logAudit(req, "delete", "categories", Number(req.params.id));
     res.json({ success: true });
   });
 
   app.post("/api/admin/products", async (req, res) => {
     const product = await storage.createProduct(req.body);
+    await logAudit(req, "create", "products", product.id);
     res.status(201).json(product);
   });
 
   app.patch("/api/admin/products/:id", async (req, res) => {
     const product = await storage.updateProduct(Number(req.params.id), req.body);
+    await logAudit(req, "update", "products", Number(req.params.id));
     res.json(product);
   });
 
   app.delete("/api/admin/products/:id", async (req, res) => {
     await storage.deleteProduct(Number(req.params.id));
+    await logAudit(req, "delete", "products", Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  app.post("/api/admin/variants", async (req, res) => {
+    const variant = await storage.createVariant(req.body);
+    await logAudit(req, "create", "variants", variant.id);
+    res.status(201).json(variant);
+  });
+
+  app.patch("/api/admin/variants/:id", async (req, res) => {
+    const variant = await storage.updateVariant(Number(req.params.id), req.body);
+    await logAudit(req, "update", "variants", Number(req.params.id));
+    res.json(variant);
+  });
+
+  app.delete("/api/admin/variants/:id", async (req, res) => {
+    await storage.deleteVariant(Number(req.params.id));
+    await logAudit(req, "delete", "variants", Number(req.params.id));
     res.json({ success: true });
   });
 
   app.post("/api/admin/brands", async (req, res) => {
     const brand = await storage.createBrand(req.body);
+    await logAudit(req, "create", "brands", brand.id);
     res.status(201).json(brand);
   });
 
   app.patch("/api/admin/brands/:id", async (req, res) => {
     const brand = await storage.updateBrand(Number(req.params.id), req.body);
+    await logAudit(req, "update", "brands", Number(req.params.id));
     res.json(brand);
   });
 
   app.delete("/api/admin/brands/:id", async (req, res) => {
     await storage.deleteBrand(Number(req.params.id));
+    await logAudit(req, "delete", "brands", Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  app.post("/api/admin/banners", async (req, res) => {
+    const banner = await storage.createBanner(req.body);
+    await logAudit(req, "create", "banners", banner.id);
+    res.status(201).json(banner);
+  });
+
+  app.patch("/api/admin/banners/:id", async (req, res) => {
+    const banner = await storage.updateBanner(Number(req.params.id), req.body);
+    await logAudit(req, "update", "banners", Number(req.params.id));
+    res.json(banner);
+  });
+
+  app.delete("/api/admin/banners/:id", async (req, res) => {
+    await storage.deleteBanner(Number(req.params.id));
+    await logAudit(req, "delete", "banners", Number(req.params.id));
     res.json({ success: true });
   });
 
   app.post("/api/admin/pages", async (req, res) => {
     const page = await storage.createPage(req.body);
+    await logAudit(req, "create", "pages", page.id);
     res.status(201).json(page);
   });
 
   app.patch("/api/admin/pages/:id", async (req, res) => {
     const page = await storage.updatePage(Number(req.params.id), req.body);
+    await logAudit(req, "update", "pages", Number(req.params.id));
     res.json(page);
+  });
+
+  app.post("/api/settings", async (req, res) => {
+    const setting = await storage.setSetting(req.body.key, req.body.value, req.body.type);
+    await logAudit(req, "update", "settings", setting.id, { key: req.body.key });
+    res.json(setting);
   });
 
   app.post("/api/admin/coupons", async (req, res) => {
     const coupon = await storage.createCoupon(req.body);
+    await logAudit(req, "create", "coupons", coupon.id);
     res.status(201).json(coupon);
+  });
+
+  app.get("/api/admin/coupons", async (req, res) => {
+    res.json(await storage.getCoupons());
+  });
+
+  app.get("/api/admin/audit-logs", async (req, res) => {
+    const entity = req.query.entity as string | undefined;
+    if (entity) {
+      res.json(await storage.getAuditLogsByEntity(entity));
+    } else {
+      res.json(await storage.getAuditLogs(200));
+    }
+  });
+
+  app.get("/api/admin/consent-records", async (req, res) => {
+    res.json(await storage.getConsentRecords());
+  });
+
+  app.get("/api/admin/newsletters", async (req, res) => {
+    res.json(await storage.getNewsletters());
+  });
+
+  app.post("/api/admin/layouts", async (req, res) => {
+    const layout = await storage.createPageLayout(req.body);
+    await logAudit(req, "create", "layouts", layout.id);
+    res.status(201).json(layout);
+  });
+
+  app.patch("/api/admin/layouts/:id", async (req, res) => {
+    const layout = await storage.updatePageLayout(Number(req.params.id), req.body);
+    await logAudit(req, "update", "layouts", Number(req.params.id));
+    res.json(layout);
+  });
+
+  app.delete("/api/admin/layouts/:id", async (req, res) => {
+    await storage.deletePageLayout(Number(req.params.id));
+    await logAudit(req, "delete", "layouts", Number(req.params.id));
+    res.json({ success: true });
   });
 
   return httpServer;

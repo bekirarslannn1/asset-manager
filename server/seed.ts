@@ -1,6 +1,7 @@
 import { db } from "./db";
-import { categories, brands, products, banners, siteSettings, coupons, pages } from "@shared/schema";
+import { categories, brands, products, banners, siteSettings, coupons, pages, users, productVariants, pageLayouts } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 
 export async function seedDatabase() {
   const existing = await db.select().from(categories).limit(1);
@@ -333,6 +334,14 @@ export async function seedDatabase() {
     { key: "free_shipping_threshold", value: "500", type: "number" },
     { key: "announcement_text", value: "500 TL uzeri KARGO BEDAVA | Yeni uyelere %10 hosgeldin indirimi", type: "text" },
     { key: "primary_color", value: "#39FF14", type: "color" },
+    { key: "secondary_color", value: "#1a1a1a", type: "color" },
+    { key: "accent_color", value: "#39FF14", type: "color" },
+    { key: "background_color", value: "#0a0a0a", type: "color" },
+    { key: "card_color", value: "#1a1a1a", type: "color" },
+    { key: "text_color", value: "#f5f5f5", type: "color" },
+    { key: "font_heading", value: "Poppins", type: "text" },
+    { key: "font_body", value: "Inter", type: "text" },
+    { key: "border_radius", value: "0.5", type: "number" },
     { key: "instagram", value: "https://instagram.com/fitsupp", type: "text" },
     { key: "twitter", value: "https://twitter.com/fitsupp", type: "text" },
     { key: "facebook", value: "https://facebook.com/fitsupp", type: "text" },
@@ -350,6 +359,45 @@ export async function seedDatabase() {
     { title: "Iade ve Degisim", slug: "iade-degisim", content: "<h2>Iade & Degisim Politikasi</h2><p>14 gun icerisinde kosulsuz iade hakkiniz bulunmaktadir. Urunun acilmamis ve kullanilmamis olmasi gerekmektedir.</p>" },
     { title: "Gizlilik Politikasi", slug: "gizlilik-politikasi", content: "<h2>Gizlilik Politikasi</h2><p>Kisisel verileriniz 6698 sayili KVKK kapsaminda korunmaktadir.</p>" },
     { title: "Kullanim Sartlari", slug: "kullanim-sartlari", content: "<h2>Kullanim Kosullari</h2><p>Sitemizi kullanimda asagidaki kosullari kabul etmis sayilirsiniz.</p>" },
+    { title: "KVKK Aydinlatma Metni", slug: "kvkk-aydinlatma", content: "<h2>KVKK Aydinlatma Metni</h2><p>6698 sayili Kisisel Verilerin Korunmasi Kanunu kapsaminda kisisel verilerinizin islenmesine iliskin aydinlatma metnimiz.</p>" },
+    { title: "Cerez Politikasi", slug: "cerez-politikasi", content: "<h2>Cerez (Cookie) Politikasi</h2><p>Web sitemizde kullanici deneyimini iyilestirmek ve hizmetlerimizi optimize etmek amaciyla cerezler kullanilmaktadir.</p>" },
+  ]);
+
+  const adminPassword = await bcrypt.hash("admin123", 10);
+  await db.insert(users).values([
+    { username: "admin", email: "admin@fitsupp.com", password: adminPassword, fullName: "Sistem Yöneticisi", role: "super_admin" },
+  ]);
+
+  const insertedProducts = await db.select().from(products);
+  const wheyProduct = insertedProducts.find(p => p.slug === "gold-standard-whey");
+  if (wheyProduct) {
+    await db.insert(productVariants).values([
+      { productId: wheyProduct.id, flavor: "Cikolata", weight: "908g", sku: "ON-GS-CHO-908", barcode: "7481001200101", price: "1299.00", comparePrice: "1599.00", stock: 50 },
+      { productId: wheyProduct.id, flavor: "Cikolata", weight: "2.27kg", sku: "ON-GS-CHO-2270", barcode: "7481001200102", price: "2499.00", comparePrice: "2999.00", stock: 30 },
+      { productId: wheyProduct.id, flavor: "Vanilya", weight: "908g", sku: "ON-GS-VAN-908", barcode: "7481001200201", price: "1299.00", comparePrice: "1599.00", stock: 40 },
+      { productId: wheyProduct.id, flavor: "Vanilya", weight: "2.27kg", sku: "ON-GS-VAN-2270", barcode: "7481001200202", price: "2499.00", comparePrice: "2999.00", stock: 25 },
+      { productId: wheyProduct.id, flavor: "Cilek", weight: "908g", sku: "ON-GS-STR-908", barcode: "7481001200301", price: "1299.00", comparePrice: "1599.00", stock: 20 },
+      { productId: wheyProduct.id, flavor: "Muz", weight: "908g", sku: "ON-GS-BAN-908", barcode: "7481001200401", price: "1279.00", comparePrice: "1599.00", stock: 15 },
+    ]);
+  }
+
+  await db.insert(pageLayouts).values([
+    {
+      name: "Ana Sayfa Düzeni",
+      slug: "homepage",
+      blocks: [
+        { type: "hero_slider", order: 1, config: {} },
+        { type: "advantages_bar", order: 2, config: {} },
+        { type: "categories_grid", order: 3, config: { title: "Kategoriler", columns: 5 } },
+        { type: "featured_products", order: 4, config: { title: "Öne Çıkan Ürünler", limit: 8 } },
+        { type: "banner_strip", order: 5, config: {} },
+        { type: "best_sellers", order: 6, config: { title: "Çok Satanlar", limit: 8 } },
+        { type: "new_arrivals", order: 7, config: { title: "Yeni Ürünler", limit: 4 } },
+        { type: "brands_carousel", order: 8, config: { title: "Markalar" } },
+        { type: "newsletter", order: 9, config: { title: "Bülten" } },
+      ],
+      isActive: true,
+    },
   ]);
 
   console.log("Database seeded successfully!");

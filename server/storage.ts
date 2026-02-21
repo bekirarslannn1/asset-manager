@@ -3,6 +3,7 @@ import {
   type Category, type InsertCategory,
   type Brand, type InsertBrand,
   type Product, type InsertProduct,
+  type ProductVariant, type InsertProductVariant,
   type Review, type InsertReview,
   type CartItem, type InsertCartItem,
   type Order, type InsertOrder,
@@ -12,75 +13,13 @@ import {
   type Favorite, type InsertFavorite,
   type Newsletter, type InsertNewsletter,
   type Page, type InsertPage,
-  users, categories, brands, products, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages,
+  type AuditLog, type InsertAuditLog,
+  type ConsentRecord, type InsertConsentRecord,
+  type PageLayout, type InsertPageLayout,
+  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, ilike, desc, asc, gte, lte, inArray, sql } from "drizzle-orm";
-
-export interface IStorage {
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-
-  getCategories(): Promise<Category[]>;
-  getCategoryBySlug(slug: string): Promise<Category | undefined>;
-  createCategory(cat: InsertCategory): Promise<Category>;
-  updateCategory(id: number, cat: Partial<InsertCategory>): Promise<Category | undefined>;
-  deleteCategory(id: number): Promise<void>;
-
-  getBrands(): Promise<Brand[]>;
-  getBrandBySlug(slug: string): Promise<Brand | undefined>;
-  createBrand(brand: InsertBrand): Promise<Brand>;
-  updateBrand(id: number, brand: Partial<InsertBrand>): Promise<Brand | undefined>;
-  deleteBrand(id: number): Promise<void>;
-
-  getProducts(filters?: ProductFilters): Promise<Product[]>;
-  getProductBySlug(slug: string): Promise<Product | undefined>;
-  getProductById(id: number): Promise<Product | undefined>;
-  createProduct(product: InsertProduct): Promise<Product>;
-  updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product | undefined>;
-  deleteProduct(id: number): Promise<void>;
-  getFeaturedProducts(): Promise<Product[]>;
-  getBestSellers(): Promise<Product[]>;
-  getNewArrivals(): Promise<Product[]>;
-  searchProducts(query: string): Promise<Product[]>;
-
-  getReviewsByProduct(productId: number): Promise<Review[]>;
-  createReview(review: InsertReview): Promise<Review>;
-
-  getCartItems(sessionId: string): Promise<(CartItem & { product: Product })[]>;
-  addToCart(item: InsertCartItem): Promise<CartItem>;
-  updateCartItem(id: number, quantity: number): Promise<CartItem | undefined>;
-  removeFromCart(id: number): Promise<void>;
-  clearCart(sessionId: string): Promise<void>;
-
-  createOrder(order: InsertOrder): Promise<Order>;
-  getOrders(): Promise<Order[]>;
-  getOrderByNumber(orderNumber: string): Promise<Order | undefined>;
-  updateOrderStatus(id: number, status: string): Promise<Order | undefined>;
-
-  getBanners(type?: string): Promise<Banner[]>;
-  createBanner(banner: InsertBanner): Promise<Banner>;
-  updateBanner(id: number, banner: Partial<InsertBanner>): Promise<Banner | undefined>;
-  deleteBanner(id: number): Promise<void>;
-
-  getSetting(key: string): Promise<string | null>;
-  getSettings(): Promise<SiteSetting[]>;
-  setSetting(key: string, value: string, type?: string): Promise<SiteSetting>;
-
-  getCouponByCode(code: string): Promise<Coupon | undefined>;
-  createCoupon(coupon: InsertCoupon): Promise<Coupon>;
-
-  getFavorites(sessionId: string): Promise<(Favorite & { product: Product })[]>;
-  toggleFavorite(sessionId: string, productId: number): Promise<boolean>;
-
-  subscribeNewsletter(email: string): Promise<Newsletter>;
-
-  getPages(): Promise<Page[]>;
-  getPageBySlug(slug: string): Promise<Page | undefined>;
-  createPage(page: InsertPage): Promise<Page>;
-  updatePage(id: number, page: Partial<InsertPage>): Promise<Page | undefined>;
-}
+import { eq, and, ilike, desc, asc, gte, lte, sql, count, sum } from "drizzle-orm";
 
 export interface ProductFilters {
   categoryId?: number;
@@ -95,7 +34,7 @@ export interface ProductFilters {
   search?: string;
 }
 
-export class DatabaseStorage implements IStorage {
+export class DatabaseStorage {
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
@@ -104,13 +43,33 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user;
   }
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
   async createUser(user: InsertUser): Promise<User> {
     const [created] = await db.insert(users).values(user).returning();
     return created;
   }
+  async getUsers(): Promise<User[]> {
+    return db.select().from(users).orderBy(desc(users.createdAt));
+  }
+  async updateUser(id: number, data: Partial<InsertUser>): Promise<User | undefined> {
+    const [updated] = await db.update(users).set(data).where(eq(users.id, id)).returning();
+    return updated;
+  }
+  async updateUserLogin(id: number): Promise<void> {
+    await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, id));
+  }
+  async deleteUser(id: number): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+  }
 
   async getCategories(): Promise<Category[]> {
     return db.select().from(categories).where(eq(categories.isActive, true)).orderBy(asc(categories.sortOrder));
+  }
+  async getAllCategories(): Promise<Category[]> {
+    return db.select().from(categories).orderBy(asc(categories.sortOrder));
   }
   async getCategoryBySlug(slug: string): Promise<Category | undefined> {
     const [cat] = await db.select().from(categories).where(eq(categories.slug, slug));
@@ -148,9 +107,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProducts(filters?: ProductFilters): Promise<Product[]> {
-    let query = db.select().from(products).where(eq(products.isActive, true)).$dynamic();
     const conditions: any[] = [eq(products.isActive, true)];
-
     if (filters?.categoryId) conditions.push(eq(products.categoryId, filters.categoryId));
     if (filters?.brandId) conditions.push(eq(products.brandId, filters.brandId));
     if (filters?.minPrice) conditions.push(gte(products.price, String(filters.minPrice)));
@@ -170,10 +127,11 @@ export class DatabaseStorage implements IStorage {
       case 'best_seller': orderClause = desc(products.isBestSeller); break;
       default: orderClause = desc(products.createdAt);
     }
-
     return db.select().from(products).where(and(...conditions)).orderBy(orderClause);
   }
-
+  async getAllProducts(): Promise<Product[]> {
+    return db.select().from(products).orderBy(desc(products.createdAt));
+  }
   async getProductBySlug(slug: string): Promise<Product | undefined> {
     const [product] = await db.select().from(products).where(eq(products.slug, slug));
     return product;
@@ -204,6 +162,25 @@ export class DatabaseStorage implements IStorage {
   }
   async searchProducts(query: string): Promise<Product[]> {
     return db.select().from(products).where(and(eq(products.isActive, true), ilike(products.name, `%${query}%`))).limit(20);
+  }
+
+  async getVariantsByProduct(productId: number): Promise<ProductVariant[]> {
+    return db.select().from(productVariants).where(eq(productVariants.productId, productId)).orderBy(asc(productVariants.id));
+  }
+  async getVariantById(id: number): Promise<ProductVariant | undefined> {
+    const [v] = await db.select().from(productVariants).where(eq(productVariants.id, id));
+    return v;
+  }
+  async createVariant(variant: InsertProductVariant): Promise<ProductVariant> {
+    const [created] = await db.insert(productVariants).values(variant).returning();
+    return created;
+  }
+  async updateVariant(id: number, data: Partial<InsertProductVariant>): Promise<ProductVariant | undefined> {
+    const [updated] = await db.update(productVariants).set(data).where(eq(productVariants.id, id)).returning();
+    return updated;
+  }
+  async deleteVariant(id: number): Promise<void> {
+    await db.delete(productVariants).where(eq(productVariants.id, id));
   }
 
   async getReviewsByProduct(productId: number): Promise<Review[]> {
@@ -260,6 +237,44 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db.update(orders).set({ status }).where(eq(orders.id, id)).returning();
     return updated;
   }
+  async getOrderStats() {
+    const allOrders = await db.select().from(orders);
+    const totalRevenue = allOrders.reduce((s, o) => s + parseFloat(o.total), 0);
+    const totalOrders = allOrders.length;
+    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const completedOrders = allOrders.filter(o => o.status === 'completed' || o.status === 'delivered').length;
+    const pendingOrders = allOrders.filter(o => o.status === 'pending').length;
+    const cancelledOrders = allOrders.filter(o => o.status === 'cancelled').length;
+
+    const last30 = allOrders.filter(o => {
+      const d = new Date(o.createdAt);
+      return d > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    });
+    const last30Revenue = last30.reduce((s, o) => s + parseFloat(o.total), 0);
+
+    const revenueByDay: Record<string, number> = {};
+    allOrders.forEach(o => {
+      const day = new Date(o.createdAt).toISOString().split("T")[0];
+      revenueByDay[day] = (revenueByDay[day] || 0) + parseFloat(o.total);
+    });
+
+    const ordersByStatus: Record<string, number> = {};
+    allOrders.forEach(o => {
+      ordersByStatus[o.status] = (ordersByStatus[o.status] || 0) + 1;
+    });
+
+    return {
+      totalRevenue,
+      totalOrders,
+      avgOrderValue,
+      completedOrders,
+      pendingOrders,
+      cancelledOrders,
+      last30Revenue,
+      revenueByDay,
+      ordersByStatus,
+    };
+  }
 
   async getBanners(type?: string): Promise<Banner[]> {
     if (type) {
@@ -304,6 +319,9 @@ export class DatabaseStorage implements IStorage {
     const [created] = await db.insert(coupons).values(coupon).returning();
     return created;
   }
+  async getCoupons(): Promise<Coupon[]> {
+    return db.select().from(coupons).orderBy(desc(coupons.id));
+  }
 
   async getFavorites(sessionId: string): Promise<(Favorite & { product: Product })[]> {
     const favs = await db.select().from(favorites).where(eq(favorites.sessionId, sessionId));
@@ -332,6 +350,9 @@ export class DatabaseStorage implements IStorage {
     const [created] = await db.insert(newsletters).values({ email }).returning();
     return created;
   }
+  async getNewsletters(): Promise<Newsletter[]> {
+    return db.select().from(newsletters).orderBy(desc(newsletters.createdAt));
+  }
 
   async getPages(): Promise<Page[]> {
     return db.select().from(pages).where(eq(pages.isActive, true));
@@ -347,6 +368,61 @@ export class DatabaseStorage implements IStorage {
   async updatePage(id: number, page: Partial<InsertPage>): Promise<Page | undefined> {
     const [updated] = await db.update(pages).set(page).where(eq(pages.id, id)).returning();
     return updated;
+  }
+
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const [created] = await db.insert(auditLogs).values(log).returning();
+    return created;
+  }
+  async getAuditLogs(limit: number = 100): Promise<AuditLog[]> {
+    return db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(limit);
+  }
+  async getAuditLogsByEntity(entity: string): Promise<AuditLog[]> {
+    return db.select().from(auditLogs).where(eq(auditLogs.entity, entity)).orderBy(desc(auditLogs.createdAt)).limit(50);
+  }
+
+  async createConsentRecord(record: InsertConsentRecord): Promise<ConsentRecord> {
+    const [created] = await db.insert(consentRecords).values(record).returning();
+    return created;
+  }
+  async getConsentsBySession(sessionId: string): Promise<ConsentRecord[]> {
+    return db.select().from(consentRecords).where(eq(consentRecords.sessionId, sessionId)).orderBy(desc(consentRecords.createdAt));
+  }
+  async getConsentRecords(): Promise<ConsentRecord[]> {
+    return db.select().from(consentRecords).orderBy(desc(consentRecords.createdAt)).limit(200);
+  }
+
+  async getPageLayouts(): Promise<PageLayout[]> {
+    return db.select().from(pageLayouts).orderBy(desc(pageLayouts.createdAt));
+  }
+  async getPageLayoutBySlug(slug: string): Promise<PageLayout | undefined> {
+    const [layout] = await db.select().from(pageLayouts).where(eq(pageLayouts.slug, slug));
+    return layout;
+  }
+  async createPageLayout(layout: InsertPageLayout): Promise<PageLayout> {
+    const [created] = await db.insert(pageLayouts).values(layout).returning();
+    return created;
+  }
+  async updatePageLayout(id: number, data: Partial<InsertPageLayout>): Promise<PageLayout | undefined> {
+    const [updated] = await db.update(pageLayouts).set(data).where(eq(pageLayouts.id, id)).returning();
+    return updated;
+  }
+  async deletePageLayout(id: number): Promise<void> {
+    await db.delete(pageLayouts).where(eq(pageLayouts.id, id));
+  }
+
+  async anonymizeUser(userId: number): Promise<void> {
+    await db.update(users).set({
+      username: `deleted_${userId}`,
+      email: `deleted_${userId}@anonymized.local`,
+      fullName: "Silinmiş Kullanıcı",
+      phone: null,
+      avatar: null,
+      password: "ANONYMIZED",
+      isActive: false,
+    }).where(eq(users.id, userId));
+    await db.delete(favorites).where(eq(favorites.sessionId, String(userId)));
+    await db.delete(consentRecords).where(eq(consentRecords.userId, userId));
   }
 }
 

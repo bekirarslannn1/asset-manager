@@ -12,6 +12,8 @@ export const users = pgTable("users", {
   phone: text("phone"),
   role: text("role").notNull().default("customer"),
   avatar: text("avatar"),
+  isActive: boolean("is_active").default(true),
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
@@ -67,6 +69,20 @@ export const products = pgTable("products", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+export const productVariants = pgTable("product_variants", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").notNull(),
+  flavor: text("flavor"),
+  weight: text("weight"),
+  sku: text("sku").notNull(),
+  barcode: text("barcode"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  comparePrice: decimal("compare_price", { precision: 10, scale: 2 }),
+  stock: integer("stock").default(0),
+  image: text("image"),
+  isActive: boolean("is_active").default(true),
+});
+
 export const reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
   productId: integer("product_id").notNull(),
@@ -82,6 +98,7 @@ export const cartItems = pgTable("cart_items", {
   id: serial("id").primaryKey(),
   sessionId: text("session_id").notNull(),
   productId: integer("product_id").notNull(),
+  variantId: integer("variant_id"),
   quantity: integer("quantity").notNull().default(1),
   selectedFlavor: text("selected_flavor"),
   selectedWeight: text("selected_weight"),
@@ -99,6 +116,9 @@ export const orders = pgTable("orders", {
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   shippingAddress: jsonb("shipping_address"),
   couponCode: text("coupon_code"),
+  paymentMethod: text("payment_method"),
+  paymentStatus: text("payment_status").default("pending"),
+  paymentId: text("payment_id"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
@@ -153,10 +173,44 @@ export const pages = pgTable("pages", {
   isActive: boolean("is_active").default(true),
 });
 
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id"),
+  userName: text("user_name"),
+  action: text("action").notNull(),
+  entity: text("entity").notNull(),
+  entityId: integer("entity_id"),
+  details: jsonb("details"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const consentRecords = pgTable("consent_records", {
+  id: serial("id").primaryKey(),
+  sessionId: text("session_id"),
+  userId: integer("user_id"),
+  consentType: text("consent_type").notNull(),
+  granted: boolean("granted").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  policyVersion: text("policy_version"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const pageLayouts = pgTable("page_layouts", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  blocks: jsonb("blocks").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, lastLoginAt: true });
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 export const insertBrandSchema = createInsertSchema(brands).omit({ id: true });
 export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
+export const insertProductVariantSchema = createInsertSchema(productVariants).omit({ id: true });
 export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true });
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true });
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true });
@@ -166,6 +220,9 @@ export const insertCouponSchema = createInsertSchema(coupons).omit({ id: true })
 export const insertFavoriteSchema = createInsertSchema(favorites).omit({ id: true });
 export const insertNewsletterSchema = createInsertSchema(newsletters).omit({ id: true, createdAt: true });
 export const insertPageSchema = createInsertSchema(pages).omit({ id: true });
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
+export const insertConsentRecordSchema = createInsertSchema(consentRecords).omit({ id: true, createdAt: true });
+export const insertPageLayoutSchema = createInsertSchema(pageLayouts).omit({ id: true, createdAt: true });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -175,6 +232,8 @@ export type Brand = typeof brands.$inferSelect;
 export type InsertBrand = z.infer<typeof insertBrandSchema>;
 export type Product = typeof products.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type ProductVariant = typeof productVariants.$inferSelect;
+export type InsertProductVariant = z.infer<typeof insertProductVariantSchema>;
 export type Review = typeof reviews.$inferSelect;
 export type InsertReview = z.infer<typeof insertReviewSchema>;
 export type CartItem = typeof cartItems.$inferSelect;
@@ -193,3 +252,9 @@ export type Newsletter = typeof newsletters.$inferSelect;
 export type InsertNewsletter = z.infer<typeof insertNewsletterSchema>;
 export type Page = typeof pages.$inferSelect;
 export type InsertPage = z.infer<typeof insertPageSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type ConsentRecord = typeof consentRecords.$inferSelect;
+export type InsertConsentRecord = z.infer<typeof insertConsentRecordSchema>;
+export type PageLayout = typeof pageLayouts.$inferSelect;
+export type InsertPageLayout = z.infer<typeof insertPageLayoutSchema>;
