@@ -532,6 +532,9 @@ export async function registerRoutes(
     try {
       const { buyer, shippingAddress, billingAddress, card, basketItems, sessionId } = req.body;
 
+      const token = getTokenFromReq(req);
+      const authUser = token ? verifyToken(token) : null;
+
       let serverTotal = 0;
       const verifiedItems: { id: number; name: string; price: number; quantity: number }[] = [];
 
@@ -635,13 +638,14 @@ export async function registerRoutes(
           try {
             const order = await storage.createOrder({
               orderNumber,
+              userId: authUser?.id || null,
               status: "confirmed",
               items: verifiedItems,
               subtotal: String(serverTotal),
               shippingCost: String(shippingCost || 0),
               discount: "0",
               total: String(totalPrice),
-              shippingAddress: shippingAddress,
+              shippingAddress: { ...shippingAddress, email: buyer.email },
               paymentMethod: "iyzico",
               paymentStatus: "paid",
               paymentId: result.paymentId || conversationId,

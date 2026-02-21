@@ -2,12 +2,30 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Minus, Plus, Trash2, ShoppingCart, Tag, ArrowRight, ArrowLeft } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingCart, Tag, ArrowRight, ArrowLeft, UserCheck } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/hooks/use-cart";
+import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Coupon } from "@shared/schema";
+
+function GuestCheckoutInfo() {
+  const { isLoggedIn } = useAuth();
+  if (isLoggedIn) return null;
+  return (
+    <div className="mt-4 flex items-start gap-2.5 bg-primary/5 border border-primary/20 rounded-lg p-3" data-testid="guest-checkout-info">
+      <UserCheck className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+      <div className="text-xs text-muted-foreground leading-relaxed">
+        <span className="font-medium text-foreground">Üye olmadan sipariş verebilirsiniz.</span>{" "}
+        Teslimat bilgilerinizi bir sonraki adımda gireceksiniz.
+        <Link href="/giris">
+          <span className="text-primary hover:underline ml-1 cursor-pointer">Giriş yap</span>
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 export default function CartPage() {
   const { items, totalItems, totalPrice, updateQuantity, removeItem, clearCart, isLoading } = useCart();
@@ -66,6 +84,8 @@ export default function CartPage() {
       </div>
     );
   }
+
+  const { isLoggedIn } = useAuth();
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8" data-testid="cart-page">
@@ -201,6 +221,8 @@ export default function CartPage() {
                 Siparişi Tamamla <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </Link>
+
+            <GuestCheckoutInfo />
           </div>
         </div>
       </div>

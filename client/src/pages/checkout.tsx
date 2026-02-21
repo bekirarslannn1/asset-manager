@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, CreditCard, Shield, Truck, Lock, Loader2 } from "lucide-react";
+import { ArrowLeft, CreditCard, Shield, Truck, Lock, Loader2, UserCheck } from "lucide-react";
 import { formatPrice, getSessionId } from "@/lib/utils";
 import { useCart } from "@/hooks/use-cart";
+import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -42,6 +43,7 @@ export default function CheckoutPage() {
   const { items, totalPrice, clearCart } = useCart();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user, isLoggedIn } = useAuth();
   const [step, setStep] = useState<CheckoutStep>("address");
   const [isProcessing, setIsProcessing] = useState(false);
   const [kvkkAccepted, setKvkkAccepted] = useState(false);
@@ -57,6 +59,16 @@ export default function CheckoutPage() {
     zipCode: "",
     identityNumber: "",
   });
+
+  useEffect(() => {
+    if (user && !address.fullName && !address.email) {
+      setAddress((prev) => ({
+        ...prev,
+        fullName: user.fullName || "",
+        email: user.email || "",
+      }));
+    }
+  }, [user]);
 
   const [cardInfo, setCardInfo] = useState({
     cardHolderName: "",
@@ -234,6 +246,16 @@ export default function CheckoutPage() {
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <Truck className="w-5 h-5 text-primary" /> Teslimat Bilgileri
               </h2>
+
+              {!isLoggedIn && (
+                <div className="flex items-start gap-2.5 bg-primary/5 border border-primary/20 rounded-lg p-3" data-testid="guest-checkout-banner">
+                  <UserCheck className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-muted-foreground leading-relaxed">
+                    <span className="font-medium text-foreground">Misafir olarak sipariş veriyorsunuz.</span>{" "}
+                    Sipariş takibi için e-posta adresinize bilgilendirme gönderilecektir.
+                  </div>
+                </div>
+              )}
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
