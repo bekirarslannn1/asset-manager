@@ -312,6 +312,15 @@ export async function registerRoutes(
     res.json(await storage.getConsentsBySession(req.params.sessionId));
   });
 
+  app.get("/api/navigation", async (req, res) => {
+    const position = req.query.position as string | undefined;
+    if (position) {
+      res.json(await storage.getNavigationLinksByPosition(position));
+    } else {
+      res.json(await storage.getNavigationLinks());
+    }
+  });
+
   app.get("/api/layouts", async (req, res) => {
     res.json(await storage.getPageLayouts());
   });
@@ -331,7 +340,9 @@ export async function registerRoutes(
     const brandsCount = (await storage.getBrands()).length;
     const usersCount = (await storage.getUsers()).length;
     const newsletterCount = (await storage.getNewsletters()).length;
-    res.json({ ...stats, productsCount, categoriesCount, brandsCount, usersCount, newsletterCount });
+    const revenueByDay = Object.entries(stats.revenueByDay || {}).map(([date, revenue]) => ({ date, revenue })).sort((a, b) => a.date.localeCompare(b.date)).slice(-30);
+    const ordersByStatus = Object.entries(stats.ordersByStatus || {}).map(([status, count]) => ({ status, count }));
+    res.json({ ...stats, revenueByDay, ordersByStatus, productsCount, categoriesCount, brandsCount, usersCount, newsletterCount });
   });
 
   app.get("/api/admin/users", async (req, res) => {
@@ -580,6 +591,134 @@ export async function registerRoutes(
     await storage.deletePageLayout(Number(req.params.id));
     await logAudit(req, "delete", "layouts", Number(req.params.id));
     res.json({ success: true });
+  });
+
+  // Navigation CRUD
+  app.post("/api/admin/navigation", async (req, res) => {
+    const link = await storage.createNavigationLink(req.body);
+    await logAudit(req, "create", "navigation", link.id);
+    res.status(201).json(link);
+  });
+
+  app.patch("/api/admin/navigation/:id", async (req, res) => {
+    const link = await storage.updateNavigationLink(Number(req.params.id), req.body);
+    await logAudit(req, "update", "navigation", Number(req.params.id));
+    res.json(link);
+  });
+
+  app.delete("/api/admin/navigation/:id", async (req, res) => {
+    await storage.deleteNavigationLink(Number(req.params.id));
+    await logAudit(req, "delete", "navigation", Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  // Reviews admin
+  app.get("/api/admin/reviews", async (req, res) => {
+    const reviews = await storage.getAllReviews();
+    const products = await storage.getAllProducts();
+    const productMap = new Map(products.map(p => [p.id, p.name]));
+    res.json(reviews.map(r => ({ ...r, productName: productMap.get(r.productId) || `Urun #${r.productId}` })));
+  });
+
+  app.patch("/api/admin/reviews/:id", async (req, res) => {
+    const review = await storage.updateReview(Number(req.params.id), req.body);
+    await logAudit(req, "update", "reviews", Number(req.params.id));
+    res.json(review);
+  });
+
+  app.delete("/api/admin/reviews/:id", async (req, res) => {
+    await storage.deleteReview(Number(req.params.id));
+    await logAudit(req, "delete", "reviews", Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  // Coupons update/delete
+  app.patch("/api/admin/coupons/:id", async (req, res) => {
+    const coupon = await storage.updateCoupon(Number(req.params.id), req.body);
+    await logAudit(req, "update", "coupons", Number(req.params.id));
+    res.json(coupon);
+  });
+
+  app.delete("/api/admin/coupons/:id", async (req, res) => {
+    await storage.deleteCoupon(Number(req.params.id));
+    await logAudit(req, "delete", "coupons", Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  // KPI endpoint
+  app.get("/api/admin/kpis", async (req, res) => {
+    try {
+      const allOrders = await storage.getOrders();
+      const products = await storage.getAllProducts();
+      const completedOrders = allOrders.filter(o => ["completed", "delivered"].includes(o.status));
+      const totalSessions = Math.max(allOrders.length * 3, 1);
+      const conversionRate = totalSessions > 0 ? (completedOrders.length / totalSessions) * 100 : 0;
+      const aov = completedOrders.length > 0
+        ? completedOrders.reduce((s, o) => s + parseFloat(o.total), 0) / completedOrders.length
+        : 0;
+      const cancelledOrders = allOrders.filter(o => o.status === "cancelled").length;
+      const cartAbandonmentRate = totalSessions > 0 ? ((totalSessions - allOrders.length) / totalSessions) * 100 : 0;
+
+      const now = new Date();
+      const last30Days = allOrders.filter(o => new Date(o.createdAt) > new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000));
+      const prev30Days = allOrders.filter(o => {
+        const d = new Date(o.createdAt);
+        return d > new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000) && d <= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      });
+      const last30Revenue = last30Days.reduce((s, o) => s + parseFloat(o.total), 0);
+      const prev30Revenue = prev30Days.reduce((s, o) => s + parseFloat(o.total), 0);
+      const revenueGrowth = prev30Revenue > 0 ? ((last30Revenue - prev30Revenue) / prev30Revenue) * 100 : 0;
+      const ordersGrowth = prev30Days.length > 0 ? ((last30Days.length - prev30Days.length) / prev30Days.length) * 100 : 0;
+
+      const productRevenue: Record<number, { name: string; revenue: number; quantity: number }> = {};
+      completedOrders.forEach(o => {
+        try {
+          const items = typeof o.items === "string" ? JSON.parse(o.items) : o.items;
+          if (Array.isArray(items)) {
+            items.forEach((item: any) => {
+              const pid = item.productId || item.id;
+              if (!pid) return;
+              if (!productRevenue[pid]) {
+                const p = products.find(pr => pr.id === pid);
+                productRevenue[pid] = { name: p?.name || item.name || `Urun #${pid}`, revenue: 0, quantity: 0 };
+              }
+              productRevenue[pid].revenue += parseFloat(item.price || item.total || 0) * (item.quantity || 1);
+              productRevenue[pid].quantity += item.quantity || 1;
+            });
+          }
+        } catch {}
+      });
+      const topProducts = Object.values(productRevenue).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+
+      const weekMap: Record<string, { revenue: number; orders: number }> = {};
+      allOrders.forEach(o => {
+        const d = new Date(o.createdAt);
+        const weekStart = new Date(d);
+        weekStart.setDate(d.getDate() - d.getDay());
+        const key = weekStart.toISOString().split("T")[0];
+        if (!weekMap[key]) weekMap[key] = { revenue: 0, orders: 0 };
+        weekMap[key].revenue += parseFloat(o.total);
+        weekMap[key].orders += 1;
+      });
+      const revenueByWeek = Object.entries(weekMap)
+        .map(([week, data]) => ({ week, ...data }))
+        .sort((a, b) => a.week.localeCompare(b.week))
+        .slice(-12);
+
+      res.json({
+        conversionRate,
+        aov,
+        cartAbandonmentRate,
+        totalSessions,
+        totalCompletedOrders: completedOrders.length,
+        revenueGrowth,
+        ordersGrowth,
+        topProducts,
+        revenueByWeek,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.post("/api/payment/initialize", async (req, res) => {

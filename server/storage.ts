@@ -16,7 +16,8 @@ import {
   type AuditLog, type InsertAuditLog,
   type ConsentRecord, type InsertConsentRecord,
   type PageLayout, type InsertPageLayout,
-  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts,
+  type NavigationLink, type InsertNavigationLink,
+  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, desc, asc, gte, lte, sql, count, sum } from "drizzle-orm";
@@ -106,6 +107,24 @@ export class DatabaseStorage {
     await db.delete(brands).where(eq(brands.id, id));
   }
 
+  async getNavigationLinks(): Promise<NavigationLink[]> {
+    return db.select().from(navigationLinks).where(eq(navigationLinks.isActive, true)).orderBy(asc(navigationLinks.sortOrder));
+  }
+  async getNavigationLinksByPosition(position: string): Promise<NavigationLink[]> {
+    return db.select().from(navigationLinks).where(and(eq(navigationLinks.isActive, true), eq(navigationLinks.position, position))).orderBy(asc(navigationLinks.sortOrder));
+  }
+  async createNavigationLink(link: InsertNavigationLink): Promise<NavigationLink> {
+    const [created] = await db.insert(navigationLinks).values(link).returning();
+    return created;
+  }
+  async updateNavigationLink(id: number, data: Partial<InsertNavigationLink>): Promise<NavigationLink | undefined> {
+    const [updated] = await db.update(navigationLinks).set(data).where(eq(navigationLinks.id, id)).returning();
+    return updated;
+  }
+  async deleteNavigationLink(id: number): Promise<void> {
+    await db.delete(navigationLinks).where(eq(navigationLinks.id, id));
+  }
+
   async getProducts(filters?: ProductFilters): Promise<Product[]> {
     const conditions: any[] = [eq(products.isActive, true)];
     if (filters?.categoryId) conditions.push(eq(products.categoryId, filters.categoryId));
@@ -190,6 +209,16 @@ export class DatabaseStorage {
     const [created] = await db.insert(reviews).values(review).returning();
     return created;
   }
+  async getAllReviews(): Promise<Review[]> {
+    return db.select().from(reviews).orderBy(desc(reviews.createdAt));
+  }
+  async updateReview(id: number, data: Partial<InsertReview>): Promise<Review | undefined> {
+    const [updated] = await db.update(reviews).set(data).where(eq(reviews.id, id)).returning();
+    return updated;
+  }
+  async deleteReview(id: number): Promise<void> {
+    await db.delete(reviews).where(eq(reviews.id, id));
+  }
 
   async getCartItems(sessionId: string): Promise<(CartItem & { product: Product })[]> {
     const items = await db.select().from(cartItems).where(eq(cartItems.sessionId, sessionId));
@@ -232,6 +261,9 @@ export class DatabaseStorage {
   async getOrderByNumber(orderNumber: string): Promise<Order | undefined> {
     const [order] = await db.select().from(orders).where(eq(orders.orderNumber, orderNumber));
     return order;
+  }
+  async getOrdersByUser(userId: number): Promise<Order[]> {
+    return db.select().from(orders).where(eq(orders.userId, userId)).orderBy(desc(orders.createdAt));
   }
   async updateOrderStatus(id: number, status: string): Promise<Order | undefined> {
     const [updated] = await db.update(orders).set({ status }).where(eq(orders.id, id)).returning();
@@ -321,6 +353,13 @@ export class DatabaseStorage {
   }
   async getCoupons(): Promise<Coupon[]> {
     return db.select().from(coupons).orderBy(desc(coupons.id));
+  }
+  async updateCoupon(id: number, data: Partial<InsertCoupon>): Promise<Coupon | undefined> {
+    const [updated] = await db.update(coupons).set(data).where(eq(coupons.id, id)).returning();
+    return updated;
+  }
+  async deleteCoupon(id: number): Promise<void> {
+    await db.delete(coupons).where(eq(coupons.id, id));
   }
 
   async getFavorites(sessionId: string): Promise<(Favorite & { product: Product })[]> {
