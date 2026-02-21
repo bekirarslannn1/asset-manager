@@ -41,7 +41,7 @@ function getTokenFromReq(req: Request) {
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   super_admin: ["*"],
-  admin: ["products", "categories", "brands", "banners", "pages", "settings", "orders", "coupons", "users", "variants", "layouts", "audit_logs"],
+  admin: ["products", "categories", "brands", "banners", "pages", "settings", "orders", "coupons", "users", "variants", "layouts", "audit_logs", "blog"],
   seller: ["products", "variants", "orders"],
   support: ["orders", "users"],
   logistics: ["orders"],
@@ -1195,6 +1195,188 @@ export async function registerRoutes(
 </products>`;
     res.set("Content-Type", "application/xml; charset=utf-8");
     res.send(xml);
+  });
+
+  app.get("/api/blog/categories", async (_req, res) => {
+    try {
+      const cats = await storage.getBlogCategories();
+      res.json(cats);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.get("/api/blog/posts", async (req, res) => {
+    try {
+      const { categoryId, tag, search } = req.query;
+      const posts = await storage.getBlogPosts({
+        categoryId: categoryId ? Number(categoryId) : undefined,
+        tag: tag as string | undefined,
+        search: search as string | undefined,
+      });
+      res.json(posts);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.get("/api/blog/posts/featured", async (_req, res) => {
+    try {
+      const posts = await storage.getFeaturedBlogPosts(4);
+      res.json(posts);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.get("/api/blog/posts/:slug", async (req, res) => {
+    try {
+      const post = await storage.getBlogPostBySlug(req.params.slug);
+      if (!post) return res.status(404).json({ error: "Post bulunamadı" });
+      await storage.incrementBlogPostView(post.id);
+      res.json(post);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.get("/api/blog/posts/:slug/related", async (req, res) => {
+    try {
+      const post = await storage.getBlogPostBySlug(req.params.slug);
+      if (!post) return res.status(404).json({ error: "Post bulunamadı" });
+      const related = await storage.getRelatedBlogPosts(post.id, post.categoryId, post.tags);
+      res.json(related);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.get("/api/blog/posts/:slug/comments", async (req, res) => {
+    try {
+      const post = await storage.getBlogPostBySlug(req.params.slug);
+      if (!post) return res.status(404).json({ error: "Post bulunamadı" });
+      const comments = await storage.getBlogComments(post.id);
+      res.json(comments);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post("/api/blog/posts/:slug/comments", async (req, res) => {
+    try {
+      const post = await storage.getBlogPostBySlug(req.params.slug);
+      if (!post) return res.status(404).json({ error: "Post bulunamadı" });
+      const { name, email, comment } = req.body;
+      if (!name || !comment) return res.status(400).json({ error: "İsim ve yorum gerekli" });
+      const created = await storage.createBlogComment({ postId: post.id, name, email, comment });
+      res.status(201).json(created);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.get("/api/jsonld/blog/:slug", async (req, res) => {
+    try {
+      const post = await storage.getBlogPostBySlug(req.params.slug);
+      if (!post) return res.status(404).json({ error: "Post bulunamadı" });
+      const siteUrlSetting = await storage.getSiteSetting("site_url");
+      const siteUrl = siteUrlSetting?.value || "https://example.com";
+      const siteNameSetting = await storage.getSiteSetting("site_name");
+      const siteName = siteNameSetting?.value || "Supplement Store";
+
+      let category = null;
+      if (post.categoryId) {
+        const cats = await storage.getAllBlogCategories();
+        category = cats.find(c => c.id === post.categoryId);
+      }
+
+      res.json({
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": post.title,
+        "description": post.excerpt || post.title,
+        "image": post.coverImage || "",
+        "author": {
+          "@type": "Person",
+          "name": post.authorName
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": siteName,
+          "url": siteUrl
+        },
+        "datePublished": post.publishedAt || post.createdAt,
+        "dateModified": post.updatedAt,
+        "url": `${siteUrl}/blog/${post.slug}`,
+        "wordCount": (post.content || '').split(/\s+/).length,
+        "timeRequired": `PT${post.readingTime || 1}M`,
+        ...(category ? { "articleSection": category.name } : {}),
+        ...(post.tags?.length ? { "keywords": post.tags.join(", ") } : {})
+      });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.get("/api/admin/blog/categories", async (_req, res) => {
+    try {
+      const cats = await storage.getAllBlogCategories();
+      res.json(cats);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post("/api/admin/blog/categories", async (req, res) => {
+    try {
+      const created = await storage.createBlogCategory(req.body);
+      res.status(201).json(created);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.put("/api/admin/blog/categories/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateBlogCategory(Number(req.params.id), req.body);
+      res.json(updated);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.delete("/api/admin/blog/categories/:id", async (req, res) => {
+    try {
+      await storage.deleteBlogCategory(Number(req.params.id));
+      res.json({ success: true });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.get("/api/admin/blog/posts", async (_req, res) => {
+    try {
+      const posts = await storage.getAllBlogPosts();
+      res.json(posts);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post("/api/admin/blog/posts", async (req, res) => {
+    try {
+      const created = await storage.createBlogPost(req.body);
+      res.status(201).json(created);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.put("/api/admin/blog/posts/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateBlogPost(Number(req.params.id), req.body);
+      res.json(updated);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.delete("/api/admin/blog/posts/:id", async (req, res) => {
+    try {
+      await storage.deleteBlogPost(Number(req.params.id));
+      res.json({ success: true });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.get("/api/admin/blog/comments", async (_req, res) => {
+    try {
+      const comments = await storage.getAllBlogComments();
+      res.json(comments);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.put("/api/admin/blog/comments/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateBlogComment(Number(req.params.id), req.body);
+      res.json(updated);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.delete("/api/admin/blog/comments/:id", async (req, res) => {
+    try {
+      await storage.deleteBlogComment(Number(req.params.id));
+      res.json({ success: true });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
   app.post("/api/payment/installment", async (req, res) => {

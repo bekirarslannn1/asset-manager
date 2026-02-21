@@ -276,6 +276,11 @@ function Header() {
                 Sihirbaz
               </span>
             </Link>
+            <Link href="/blog">
+              <span className="px-3 py-2 text-sm font-medium hover:text-primary transition-colors rounded-md hover-elevate cursor-pointer" data-testid="link-blog">
+                Blog
+              </span>
+            </Link>
             {headerNavLinks.map((link) => (
               <Link key={link.id} href={link.url}>
                 <span className="px-3 py-2 text-sm font-medium hover:text-primary transition-colors rounded-md hover-elevate cursor-pointer" data-testid={`link-dynamic-nav-${link.id}`}>
@@ -378,6 +383,9 @@ function Header() {
           ))}
           <Link href="/urunler" onClick={() => setMobileMenuOpen(false)}>
             <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer">Tüm Ürünler</span>
+          </Link>
+          <Link href="/blog" onClick={() => setMobileMenuOpen(false)}>
+            <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer" data-testid="mobile-link-blog">Blog</span>
           </Link>
           {headerNavLinks.map((link) => (
             <Link key={link.id} href={link.url} onClick={() => setMobileMenuOpen(false)}>
@@ -485,6 +493,15 @@ function Footer() {
           <div>
             <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider" data-testid="text-footer-quick-links">Hizli Linkler</h3>
             <div className="space-y-2.5">
+              <Link href="/supplement-sihirbazi">
+                <span className="block text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer" data-testid="link-footer-wizard">Supplement Sihirbazı</span>
+              </Link>
+              <Link href="/blog">
+                <span className="block text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer" data-testid="link-footer-blog">Blog</span>
+              </Link>
+              <Link href="/admin">
+                <span className="block text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer" data-testid="link-footer-admin">Yönetim Paneli</span>
+              </Link>
               {footerNavLinks.map((link) => (
                 <Link key={link.id} href={link.url}>
                   <span className="block text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer" data-testid={`link-footer-dynamic-nav-${link.id}`}>

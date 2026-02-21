@@ -18,6 +18,8 @@ import CheckoutPage from "@/pages/checkout";
 import { LoginPage, RegisterPage } from "@/pages/auth";
 import AdminPage from "@/pages/admin";
 import SupplementWizardPage from "@/pages/supplement-wizard";
+import BlogPage from "@/pages/blog";
+import BlogDetailPage from "@/pages/blog-detail";
 import SeoHead from "@/components/seo-head";
 import NotFound from "@/pages/not-found";
 
@@ -38,6 +40,8 @@ function Router() {
         <Route path="/uye-ol" component={RegisterPage} />
         <Route path="/admin" component={AdminPage} />
         <Route path="/supplement-sihirbazi" component={SupplementWizardPage} />
+        <Route path="/blog" component={BlogPage} />
+        <Route path="/blog/:slug" component={BlogDetailPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

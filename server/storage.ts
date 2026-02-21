@@ -20,7 +20,10 @@ import {
   type Bundle, type InsertBundle,
   type Testimonial, type InsertTestimonial,
   type PaymentMethod, type InsertPaymentMethod,
-  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, bundles, testimonials, paymentMethods,
+  type BlogCategory, type InsertBlogCategory,
+  type BlogPost, type InsertBlogPost,
+  type BlogComment, type InsertBlogComment,
+  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, bundles, testimonials, paymentMethods, blogCategories, blogPosts, blogComments,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, ilike, desc, asc, gte, lte, sql, count, sum } from "drizzle-orm";
@@ -543,6 +546,113 @@ export class DatabaseStorage {
   }
   async deleteBundle(id: number): Promise<void> {
     await db.delete(bundles).where(eq(bundles.id, id));
+  }
+
+  async getBlogCategories(): Promise<BlogCategory[]> {
+    return db.select().from(blogCategories).where(eq(blogCategories.isActive, true)).orderBy(asc(blogCategories.sortOrder));
+  }
+  async getAllBlogCategories(): Promise<BlogCategory[]> {
+    return db.select().from(blogCategories).orderBy(asc(blogCategories.sortOrder));
+  }
+  async getBlogCategoryBySlug(slug: string): Promise<BlogCategory | undefined> {
+    const [cat] = await db.select().from(blogCategories).where(eq(blogCategories.slug, slug));
+    return cat;
+  }
+  async createBlogCategory(data: InsertBlogCategory): Promise<BlogCategory> {
+    const [created] = await db.insert(blogCategories).values(data).returning();
+    return created;
+  }
+  async updateBlogCategory(id: number, data: Partial<InsertBlogCategory>): Promise<BlogCategory | undefined> {
+    const [updated] = await db.update(blogCategories).set(data).where(eq(blogCategories.id, id)).returning();
+    return updated;
+  }
+  async deleteBlogCategory(id: number): Promise<void> {
+    await db.delete(blogCategories).where(eq(blogCategories.id, id));
+  }
+
+  async getBlogPosts(filters?: { categoryId?: number; tag?: string; search?: string; published?: boolean }): Promise<BlogPost[]> {
+    const conditions = [];
+    if (filters?.published !== false) {
+      conditions.push(eq(blogPosts.isPublished, true));
+    }
+    if (filters?.categoryId) {
+      conditions.push(eq(blogPosts.categoryId, filters.categoryId));
+    }
+    if (filters?.search) {
+      conditions.push(
+        or(
+          ilike(blogPosts.title, `%${filters.search}%`),
+          ilike(blogPosts.content, `%${filters.search}%`)
+        )!
+      );
+    }
+    if (conditions.length > 0) {
+      return db.select().from(blogPosts).where(and(...conditions)).orderBy(desc(blogPosts.publishedAt));
+    }
+    return db.select().from(blogPosts).orderBy(desc(blogPosts.publishedAt));
+  }
+  async getAllBlogPosts(): Promise<BlogPost[]> {
+    return db.select().from(blogPosts).orderBy(desc(blogPosts.createdAt));
+  }
+  async getBlogPostBySlug(slug: string): Promise<BlogPost | undefined> {
+    const [post] = await db.select().from(blogPosts).where(eq(blogPosts.slug, slug));
+    return post;
+  }
+  async getBlogPost(id: number): Promise<BlogPost | undefined> {
+    const [post] = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
+    return post;
+  }
+  async createBlogPost(data: InsertBlogPost): Promise<BlogPost> {
+    const readingTime = Math.max(1, Math.ceil((data.content || '').split(/\s+/).length / 200));
+    const [created] = await db.insert(blogPosts).values({ ...data, readingTime }).returning();
+    return created;
+  }
+  async updateBlogPost(id: number, data: Partial<InsertBlogPost>): Promise<BlogPost | undefined> {
+    const updateData: any = { ...data, updatedAt: new Date() };
+    if (data.content) {
+      updateData.readingTime = Math.max(1, Math.ceil(data.content.split(/\s+/).length / 200));
+    }
+    const [updated] = await db.update(blogPosts).set(updateData).where(eq(blogPosts.id, id)).returning();
+    return updated;
+  }
+  async deleteBlogPost(id: number): Promise<void> {
+    await db.delete(blogComments).where(eq(blogComments.postId, id));
+    await db.delete(blogPosts).where(eq(blogPosts.id, id));
+  }
+  async incrementBlogPostView(id: number): Promise<void> {
+    await db.update(blogPosts).set({ viewCount: sql`${blogPosts.viewCount} + 1` }).where(eq(blogPosts.id, id));
+  }
+  async getRelatedBlogPosts(postId: number, categoryId: number | null, tags: string[] | null, limit: number = 3): Promise<BlogPost[]> {
+    const conditions = [eq(blogPosts.isPublished, true), sql`${blogPosts.id} != ${postId}`];
+    if (categoryId) {
+      conditions.push(eq(blogPosts.categoryId, categoryId));
+    }
+    return db.select().from(blogPosts).where(and(...conditions)).orderBy(desc(blogPosts.publishedAt)).limit(limit);
+  }
+  async getFeaturedBlogPosts(limit: number = 3): Promise<BlogPost[]> {
+    return db.select().from(blogPosts).where(and(eq(blogPosts.isPublished, true), eq(blogPosts.isFeatured, true))).orderBy(desc(blogPosts.publishedAt)).limit(limit);
+  }
+
+  async getBlogComments(postId: number, approvedOnly: boolean = true): Promise<BlogComment[]> {
+    const conditions = [eq(blogComments.postId, postId)];
+    if (approvedOnly) {
+      conditions.push(eq(blogComments.isApproved, true));
+    }
+    return db.select().from(blogComments).where(and(...conditions)).orderBy(desc(blogComments.createdAt));
+  }
+  async getAllBlogComments(): Promise<BlogComment[]> {
+    return db.select().from(blogComments).orderBy(desc(blogComments.createdAt));
+  }
+  async createBlogComment(data: InsertBlogComment): Promise<BlogComment> {
+    const [created] = await db.insert(blogComments).values(data).returning();
+    return created;
+  }
+  async updateBlogComment(id: number, data: Partial<InsertBlogComment>): Promise<BlogComment | undefined> {
+    const [updated] = await db.update(blogComments).set(data).where(eq(blogComments.id, id)).returning();
+    return updated;
+  }
+  async deleteBlogComment(id: number): Promise<void> {
+    await db.delete(blogComments).where(eq(blogComments.id, id));
   }
 
   async anonymizeUser(userId: number): Promise<void> {

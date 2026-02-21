@@ -4,6 +4,7 @@
 A professional, enterprise-grade protein and supplement e-commerce platform for the Turkish market with a dark theme (#0a0a0a, #1a1a1a) and neon green accents (#39FF14). All content is 100% dynamic and manageable through admin panel. Features JWT auth, RBAC, audit logging, KVKK compliance, dynamic theme engine, SDUI page builder, and dynamic navigation.
 
 ## Recent Changes
+- 2026-02-21: Blog/Makale module - blogCategories, blogPosts, blogComments tables, full CRUD, JSON-LD BlogPosting, reading time calc, related posts, comment approval system, admin Blog tab
 - 2026-02-21: Multiple payment methods - credit card (iyzico), bank transfer (havale/EFT), WhatsApp order
 - 2026-02-21: Admin "Ödeme Yöntemleri" tab - manage bank accounts, WhatsApp number/template
 - 2026-02-21: Checkout page redesigned with 3 payment options and order creation for each
@@ -30,13 +31,14 @@ A professional, enterprise-grade protein and supplement e-commerce platform for 
 - **Database**: PostgreSQL via Drizzle ORM
 - **State Management**: TanStack React Query
 
-### Database Schema (20 tables)
+### Database Schema (23 tables)
 - users (with roles: super_admin, admin, seller, support, logistics, customer)
 - categories, brands, products, productVariants, reviews
 - cartItems, orders (with customerName/Email/Phone), banners, siteSettings
 - coupons, favorites, newsletters, pages
 - auditLogs, consentRecords, pageLayouts, navigationLinks
 - testimonials, paymentMethods (type: credit_card/bank_transfer/whatsapp)
+- blogCategories, blogPosts (with readingTime, viewCount, tags, SEO slug), blogComments (with approval system)
 
 ### Authentication & Authorization
 - JWT tokens with 7-day expiration
@@ -100,4 +102,6 @@ A professional, enterprise-grade protein and supplement e-commerce platform for 
 - `/supplement-sihirbazi` - Product recommendation wizard
 - `/giris` - Login
 - `/uye-ol` - Register
+- `/blog` - Blog listing with categories, tags, search
+- `/blog/:slug` - Blog post detail with comments, related posts, reading time
 - `/admin` - Admin panel (login required)

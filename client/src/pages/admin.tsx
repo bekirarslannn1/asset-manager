@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BarChart3, Package, Layers, Users, Shield, Settings, Palette, LayoutGrid, FileText,
   Image, ScrollText, Lock, LogOut, Boxes, Loader2, Tag, ShoppingCart, Star, Ticket,
-  Navigation, Mail, MessageSquareQuote, CreditCard,
+  Navigation, Mail, MessageSquareQuote, CreditCard, BookOpen,
 } from "lucide-react";
 import { ROLE_COLORS } from "./admin/shared";
 
@@ -36,6 +36,7 @@ import SettingsTab from "./admin/settings-tab";
 import TestimonialsTab from "./admin/testimonials-tab";
 import PaymentMethodsTab from "./admin/payment-methods-tab";
 import BundlesTab from "./admin/bundles-tab";
+import BlogTab from "./admin/blog-tab";
 
 function AdminLoginGate({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("admin_token"));
@@ -203,6 +204,7 @@ export default function AdminPage() {
             <TabsTrigger value="kvkk" className="gap-1.5" data-testid="tab-kvkk"><Shield className="w-3.5 h-3.5" /> KVKK</TabsTrigger>
             <TabsTrigger value="bundles" className="gap-1.5" data-testid="tab-bundles"><Boxes className="w-3.5 h-3.5" /> Paketler</TabsTrigger>
             <TabsTrigger value="payment-methods" className="gap-1.5" data-testid="tab-payment-methods"><CreditCard className="w-3.5 h-3.5" /> Ödeme</TabsTrigger>
+            <TabsTrigger value="blog" className="gap-1.5" data-testid="tab-blog"><BookOpen className="w-3.5 h-3.5" /> Blog</TabsTrigger>
             <TabsTrigger value="pages" className="gap-1.5" data-testid="tab-pages"><FileText className="w-3.5 h-3.5" /> Sayfalar</TabsTrigger>
             <TabsTrigger value="settings" className="gap-1.5" data-testid="tab-settings"><Settings className="w-3.5 h-3.5" /> Ayarlar</TabsTrigger>
           </TabsList>
@@ -226,6 +228,7 @@ export default function AdminPage() {
           <TabsContent value="kvkk"><KVKKTab /></TabsContent>
           <TabsContent value="bundles"><BundlesTab /></TabsContent>
           <TabsContent value="payment-methods"><PaymentMethodsTab /></TabsContent>
+          <TabsContent value="blog"><BlogTab /></TabsContent>
           <TabsContent value="pages"><PagesTab /></TabsContent>
           <TabsContent value="settings"><SettingsTab /></TabsContent>
         </Tabs>
