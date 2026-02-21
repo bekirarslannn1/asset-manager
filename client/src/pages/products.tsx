@@ -1,14 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useSearch } from "wouter";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { SlidersHorizontal, Grid3X3, LayoutList, X, ChevronRight } from "lucide-react";
+import { SlidersHorizontal, Grid3X3, LayoutList, X, ChevronRight, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import ProductCard from "@/components/product-card";
+import FlashDeals from "@/components/flash-deals";
+import PriceRangeSlider from "@/components/price-range-slider";
 import type { Product, Category, Brand } from "@shared/schema";
+
+const ITEMS_PER_PAGE = 12;
 
 export default function ProductsPage() {
   const search = useSearch();
@@ -17,6 +21,8 @@ export default function ProductsPage() {
   const [sortBy, setSortBy] = useState(params.get("sort") || "newest");
   const [gridView, setGridView] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [filters, setFilters] = useState({
     categoryId: params.get("categoryId") || "",
     brandId: params.get("brandId") || "",
@@ -46,6 +52,20 @@ export default function ProductsPage() {
   });
   const { data: categories = [] } = useQuery<Category[]>({ queryKey: ["/api/categories"] });
   const { data: brands = [] } = useQuery<Brand[]>({ queryKey: ["/api/brands"] });
+
+  const displayedProducts = useMemo(() => {
+    return products.slice(0, displayCount);
+  }, [products, displayCount]);
+
+  const hasMore = displayCount < products.length;
+
+  const handleLoadMore = () => {
+    setIsLoadingMore(true);
+    setTimeout(() => {
+      setDisplayCount(prev => Math.min(prev + ITEMS_PER_PAGE, products.length));
+      setIsLoadingMore(false);
+    }, 300);
+  };
 
   const activeFilterCount = [filters.categoryId, filters.brandId, filters.isVegan, filters.isGlutenFree, filters.isLactoseFree, filters.isSugarFree, filters.minPrice, filters.maxPrice].filter(Boolean).length;
 
@@ -103,25 +123,14 @@ export default function ProductsPage() {
 
       <div>
         <h3 className="font-semibold text-sm mb-3">Fiyat Aralığı</h3>
-        <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            placeholder="Min ₺"
-            value={filters.minPrice}
-            onChange={(e) => setFilters(f => ({ ...f, minPrice: e.target.value }))}
-            className="w-full"
-            data-testid="input-filter-min-price"
-          />
-          <span className="text-muted-foreground">-</span>
-          <Input
-            type="number"
-            placeholder="Max ₺"
-            value={filters.maxPrice}
-            onChange={(e) => setFilters(f => ({ ...f, maxPrice: e.target.value }))}
-            className="w-full"
-            data-testid="input-filter-max-price"
-          />
-        </div>
+        <PriceRangeSlider
+          minValue={filters.minPrice}
+          maxValue={filters.maxPrice}
+          onMinChange={(value) => setFilters(f => ({ ...f, minPrice: value }))}
+          onMaxChange={(value) => setFilters(f => ({ ...f, maxPrice: value }))}
+          minBound={0}
+          maxBound={5000}
+        />
       </div>
 
       <div>
@@ -160,6 +169,7 @@ export default function ProductsPage() {
         <ChevronRight className="w-3.5 h-3.5" />
         <span className="text-foreground" data-testid="text-breadcrumb-current">Ürünler</span>
       </nav>
+      <FlashDeals />
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold font-heading">
@@ -241,10 +251,37 @@ export default function ProductsPage() {
               </Button>
             </div>
           ) : (
-            <div className={`grid ${gridView ? "grid-cols-2 md:grid-cols-3" : "grid-cols-1"} gap-4`}>
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+            <div className="flex flex-col gap-6">
+              <div className={`grid ${gridView ? "grid-cols-2 md:grid-cols-3" : "grid-cols-1"} gap-4`}>
+                {displayedProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+              {hasMore ? (
+                <div className="flex justify-center">
+                  <Button
+                    onClick={handleLoadMore}
+                    disabled={isLoadingMore}
+                    className="min-w-[200px]"
+                    data-testid="button-load-more"
+                  >
+                    {isLoadingMore ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Yükleniyor...
+                      </>
+                    ) : (
+                      "Daha Fazla Yükle"
+                    )}
+                  </Button>
+                </div>
+              ) : products.length > 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground" data-testid="text-all-products-loaded">
+                    Tüm ürünler yüklendi
+                  </p>
+                </div>
+              ) : null}
             </div>
           )}
         </div>

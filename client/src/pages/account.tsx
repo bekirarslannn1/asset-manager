@@ -31,6 +31,13 @@ import {
   Trash2,
   Star,
   MapPinned,
+  Award,
+  Gift,
+  Copy,
+  Users,
+  TrendingUp,
+  Check,
+  FileText,
 } from "lucide-react";
 import type { UserAddress } from "@shared/schema";
 
@@ -171,25 +178,37 @@ function OrderCard({ order }: { order: OrderData }) {
               </div>
             )}
 
-            <div className="flex flex-wrap justify-end gap-4 text-sm border-t border-border pt-3">
-              <div className="flex gap-2">
-                <span className="text-muted-foreground">Ara Toplam:</span>
-                <span>{formatPrice(order.subtotal)}</span>
-              </div>
-              <div className="flex gap-2">
-                <span className="text-muted-foreground">Kargo:</span>
-                <span>{formatPrice(order.shippingCost)}</span>
-              </div>
-              {parseFloat(String(order.discount)) > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-3">
+              <div className="flex flex-wrap gap-4 text-sm">
                 <div className="flex gap-2">
-                  <span className="text-muted-foreground">İndirim:</span>
-                  <span className="text-green-400">-{formatPrice(order.discount)}</span>
+                  <span className="text-muted-foreground">Ara Toplam:</span>
+                  <span>{formatPrice(order.subtotal)}</span>
                 </div>
-              )}
-              <div className="flex gap-2">
-                <span className="font-semibold">Toplam:</span>
-                <span className="font-bold text-[#39FF14]">{formatPrice(order.total)}</span>
+                <div className="flex gap-2">
+                  <span className="text-muted-foreground">Kargo:</span>
+                  <span>{formatPrice(order.shippingCost)}</span>
+                </div>
+                {parseFloat(String(order.discount)) > 0 && (
+                  <div className="flex gap-2">
+                    <span className="text-muted-foreground">İndirim:</span>
+                    <span className="text-green-400">-{formatPrice(order.discount)}</span>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <span className="font-semibold">Toplam:</span>
+                  <span className="font-bold text-[#39FF14]">{formatPrice(order.total)}</span>
+                </div>
               </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(`/api/orders/${order.id}/invoice`, "_blank")}
+                data-testid={`button-download-invoice-${order.id}`}
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Fatura İndir
+              </Button>
             </div>
           </div>
         )}
@@ -487,6 +506,283 @@ function PasswordTab() {
   );
 }
 
+function LoyaltyPointsTab() {
+  const { data: balanceData, isLoading: balanceLoading } = useQuery<{ balance: number }>({
+    queryKey: ["/api/loyalty/balance"],
+  });
+
+  const { data: historyData = [], isLoading: historyLoading } = useQuery<
+    Array<{ id: number; userId: number; points: number; type: string; description: string; orderId?: number; createdAt: string }>
+  >({
+    queryKey: ["/api/loyalty/history"],
+  });
+
+  const balance = balanceData?.balance || 0;
+
+  if (balanceLoading || historyLoading) {
+    return (
+      <div className="flex items-center justify-center py-12" data-testid="loading-loyalty">
+        <Loader2 className="h-6 w-6 animate-spin text-[#39FF14]" />
+        <span className="ml-2 text-muted-foreground">Sadakat puanları yükleniyor...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card className="bg-gradient-to-br from-[#39FF14]/10 to-transparent border-[#39FF14]/30">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-muted-foreground text-sm mb-1">Toplam Sadakat Puanları</p>
+              <p className="text-4xl font-bold text-[#39FF14]" data-testid="text-loyalty-balance">
+                {balance.toLocaleString("tr-TR")}
+              </p>
+            </div>
+            <Award className="h-16 w-16 text-[#39FF14] opacity-50" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <div>
+        <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+          <TrendingUp className="h-5 w-5 text-[#39FF14]" />
+          İşlem Geçmişi
+        </h3>
+        {historyData && historyData.length > 0 ? (
+          <div className="space-y-2">
+            {historyData.map((transaction: any) => {
+              const isEarned = transaction.points > 0;
+              const date = new Date(transaction.createdAt).toLocaleDateString("tr-TR", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+
+              return (
+                <Card
+                  key={transaction.id}
+                  className="hover-elevate"
+                  data-testid={`card-loyalty-transaction-${transaction.id}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div
+                          className={`rounded-full p-2 ${
+                            isEarned
+                              ? "bg-green-500/20 text-green-400"
+                              : "bg-red-500/20 text-red-400"
+                          }`}
+                        >
+                          {isEarned ? (
+                            <Plus className="h-4 w-4" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium" data-testid={`text-loyalty-description-${transaction.id}`}>
+                            {transaction.description}
+                          </p>
+                          <p className="text-sm text-muted-foreground" data-testid={`text-loyalty-date-${transaction.id}`}>
+                            {date}
+                          </p>
+                        </div>
+                      </div>
+                      <p
+                        className={`font-bold text-lg ${
+                          isEarned ? "text-green-400" : "text-red-400"
+                        }`}
+                        data-testid={`text-loyalty-points-${transaction.id}`}
+                      >
+                        {isEarned ? "+" : ""}{transaction.points}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="p-6 text-center">
+              <Award className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+              <p className="text-muted-foreground">Henüz işlem geçmişi bulunmuyor.</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface ReferralUsage {
+  id: number;
+  userId: number;
+  referralCodeId: number;
+  userName?: string;
+  rewardPoints: number;
+  createdAt: string;
+}
+
+interface ReferralCode {
+  id: number;
+  userId: number;
+  code: string;
+  usedCount: number;
+  rewardPoints: number;
+  isActive: boolean;
+  usages: ReferralUsage[];
+}
+
+function ReferralSystemTab() {
+  const { toast } = useToast();
+  const { data: referralData, isLoading: referralLoading } = useQuery<ReferralCode>({
+    queryKey: ["/api/referral/my-code"],
+  });
+
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyCode = () => {
+    if (referralData?.code) {
+      navigator.clipboard.writeText(referralData.code).then(() => {
+        setCopied(true);
+        toast({ title: "Kopya yapıldı", description: "Referans kodu panoya kopyalandı." });
+        setTimeout(() => setCopied(false), 2000);
+      });
+    }
+  };
+
+  if (referralLoading) {
+    return (
+      <div className="flex items-center justify-center py-12" data-testid="loading-referral">
+        <Loader2 className="h-6 w-6 animate-spin text-[#39FF14]" />
+        <span className="ml-2 text-muted-foreground">Referans sistemi yükleniyor...</span>
+      </div>
+    );
+  }
+
+  if (!referralData) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <Gift className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+          <p className="text-muted-foreground">Referans kodu bulunmuyor.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card className="bg-gradient-to-br from-[#39FF14]/10 to-transparent border-[#39FF14]/30">
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            <div>
+              <p className="text-muted-foreground text-sm mb-2">Sizin Referans Kodunuz</p>
+              <div className="flex items-center gap-2">
+                <code
+                  className="flex-1 bg-muted p-3 rounded-md font-mono text-lg font-bold text-[#39FF14] text-center"
+                  data-testid="text-referral-code"
+                >
+                  {referralData.code}
+                </code>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleCopyCode}
+                  data-testid="button-copy-referral-code"
+                  className="shrink-0"
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 text-green-400" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              {referralData.isActive ? (
+                <Badge className="mt-2 bg-green-500/20 text-green-400 border-green-500/30 no-default-hover-elevate no-default-active-elevate">
+                  Aktif
+                </Badge>
+              ) : (
+                <Badge className="mt-2 bg-red-500/20 text-red-400 border-red-500/30 no-default-hover-elevate no-default-active-elevate">
+                  Pasif
+                </Badge>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 border-t border-border pt-4">
+              <div>
+                <p className="text-muted-foreground text-sm mb-1">Kullanım Sayısı</p>
+                <p className="text-2xl font-bold text-[#39FF14]" data-testid="text-referral-used-count">
+                  {referralData.usedCount}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-sm mb-1">Ödül Puanları</p>
+                <p className="text-2xl font-bold text-[#39FF14]" data-testid="text-referral-reward-points">
+                  {referralData.rewardPoints}
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {referralData.usages && referralData.usages.length > 0 && (
+        <div>
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+            <Users className="h-5 w-5 text-[#39FF14]" />
+            Referans Kullanımları
+          </h3>
+          <div className="space-y-2">
+            {referralData.usages.map((usage: any, index: number) => {
+              const date = new Date(usage.createdAt).toLocaleDateString("tr-TR", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              });
+
+              return (
+                <Card
+                  key={`${usage.id || index}`}
+                  className="hover-elevate"
+                  data-testid={`card-referral-usage-${index}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-full bg-[#39FF14]/20 text-[#39FF14] p-2">
+                          <Gift className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="font-medium" data-testid={`text-referral-usage-user-${index}`}>
+                            {usage.userName || "Bilinmeyen Kullanıcı"}
+                          </p>
+                          <p className="text-sm text-muted-foreground" data-testid={`text-referral-usage-date-${index}`}>
+                            {date}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="font-bold text-[#39FF14]" data-testid={`text-referral-usage-reward-${index}`}>
+                        +{usage.rewardPoints} Puan
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AddressesTab() {
   const { toast } = useToast();
   const { data: addresses = [], isLoading } = useQuery<UserAddress[]>({ queryKey: ["/api/addresses"] });
@@ -706,26 +1002,30 @@ export default function AccountPage() {
       </div>
 
       <Tabs defaultValue="orders" className="w-full">
-        <TabsList className="w-full grid grid-cols-4 mb-6" data-testid="tabs-account">
-          <TabsTrigger value="orders" className="gap-2" data-testid="tab-orders">
+        <TabsList className="w-full grid grid-cols-2 lg:grid-cols-6 mb-6 gap-1" data-testid="tabs-account">
+          <TabsTrigger value="orders" className="gap-1 text-xs sm:text-sm" data-testid="tab-orders">
             <Package className="h-4 w-4" />
-            <span className="hidden sm:inline">Siparişlerim</span>
-            <span className="sm:hidden">Siparişler</span>
+            <span className="hidden lg:inline">Siparişler</span>
           </TabsTrigger>
-          <TabsTrigger value="addresses" className="gap-2" data-testid="tab-addresses">
+          <TabsTrigger value="addresses" className="gap-1 text-xs sm:text-sm" data-testid="tab-addresses">
             <MapPinned className="h-4 w-4" />
-            <span className="hidden sm:inline">Adreslerim</span>
-            <span className="sm:hidden">Adresler</span>
+            <span className="hidden lg:inline">Adresler</span>
           </TabsTrigger>
-          <TabsTrigger value="profile" className="gap-2" data-testid="tab-profile">
+          <TabsTrigger value="loyalty" className="gap-1 text-xs sm:text-sm" data-testid="tab-loyalty">
+            <Award className="h-4 w-4" />
+            <span className="hidden lg:inline">Sadakat</span>
+          </TabsTrigger>
+          <TabsTrigger value="referral" className="gap-1 text-xs sm:text-sm" data-testid="tab-referral">
+            <Gift className="h-4 w-4" />
+            <span className="hidden lg:inline">Referans</span>
+          </TabsTrigger>
+          <TabsTrigger value="profile" className="gap-1 text-xs sm:text-sm" data-testid="tab-profile">
             <User className="h-4 w-4" />
-            <span className="hidden sm:inline">Profil Bilgilerim</span>
-            <span className="sm:hidden">Profil</span>
+            <span className="hidden lg:inline">Profil</span>
           </TabsTrigger>
-          <TabsTrigger value="password" className="gap-2" data-testid="tab-password">
+          <TabsTrigger value="password" className="gap-1 text-xs sm:text-sm" data-testid="tab-password">
             <Lock className="h-4 w-4" />
-            <span className="hidden sm:inline">Şifre Değiştir</span>
-            <span className="sm:hidden">Şifre</span>
+            <span className="hidden lg:inline">Şifre</span>
           </TabsTrigger>
         </TabsList>
 
@@ -734,6 +1034,12 @@ export default function AccountPage() {
         </TabsContent>
         <TabsContent value="addresses">
           <AddressesTab />
+        </TabsContent>
+        <TabsContent value="loyalty">
+          <LoyaltyPointsTab />
+        </TabsContent>
+        <TabsContent value="referral">
+          <ReferralSystemTab />
         </TabsContent>
         <TabsContent value="profile">
           <ProfileTab />

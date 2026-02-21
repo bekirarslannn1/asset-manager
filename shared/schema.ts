@@ -470,3 +470,82 @@ export const userAddresses = pgTable("user_addresses", {
 export const insertUserAddressSchema = createInsertSchema(userAddresses).omit({ id: true, createdAt: true });
 export type UserAddress = typeof userAddresses.$inferSelect;
 export type InsertUserAddress = z.infer<typeof insertUserAddressSchema>;
+
+export const loyaltyPoints = pgTable("loyalty_points", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  points: integer("points").notNull(),
+  type: text("type").notNull(),
+  description: text("description"),
+  orderId: integer("order_id"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+export const insertLoyaltyPointSchema = createInsertSchema(loyaltyPoints).omit({ id: true, createdAt: true });
+export type LoyaltyPoint = typeof loyaltyPoints.$inferSelect;
+export type InsertLoyaltyPoint = z.infer<typeof insertLoyaltyPointSchema>;
+
+export const referralCodes = pgTable("referral_codes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  code: text("code").notNull().unique(),
+  usedCount: integer("used_count").default(0),
+  rewardPoints: integer("reward_points").default(100),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+export const insertReferralCodeSchema = createInsertSchema(referralCodes).omit({ id: true, createdAt: true });
+export type ReferralCode = typeof referralCodes.$inferSelect;
+export type InsertReferralCode = z.infer<typeof insertReferralCodeSchema>;
+
+export const referralUsages = pgTable("referral_usages", {
+  id: serial("id").primaryKey(),
+  referralCodeId: integer("referral_code_id").notNull(),
+  referrerId: integer("referrer_id").notNull(),
+  referredId: integer("referred_id").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+export const insertReferralUsageSchema = createInsertSchema(referralUsages).omit({ id: true, createdAt: true });
+export type ReferralUsage = typeof referralUsages.$inferSelect;
+export type InsertReferralUsage = z.infer<typeof insertReferralUsageSchema>;
+
+export const shipmentTracking = pgTable("shipment_tracking", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").notNull(),
+  status: text("status").notNull(),
+  description: text("description"),
+  location: text("location"),
+  trackingNumber: text("tracking_number"),
+  carrier: text("carrier"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+export const insertShipmentTrackingSchema = createInsertSchema(shipmentTracking).omit({ id: true, createdAt: true });
+export type ShipmentTracking = typeof shipmentTracking.$inferSelect;
+export type InsertShipmentTracking = z.infer<typeof insertShipmentTrackingSchema>;
+
+export const flashDeals = pgTable("flash_deals", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  image: text("image"),
+  discountType: text("discount_type").default("percentage"),
+  discountValue: decimal("discount_value", { precision: 10, scale: 2 }),
+  productIds: jsonb("product_ids"),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+export const insertFlashDealSchema = createInsertSchema(flashDeals).omit({ id: true, createdAt: true });
+export type FlashDeal = typeof flashDeals.$inferSelect;
+export type InsertFlashDeal = z.infer<typeof insertFlashDealSchema>;
+
+export const chatMessages = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  sessionId: text("session_id").notNull(),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({ id: true, createdAt: true });
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;

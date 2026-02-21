@@ -25,7 +25,7 @@ function QuickViewModal({ product, onClose }: { product: Product; onClose: () =>
         <div className="grid md:grid-cols-2 gap-6 p-6">
           <div className="aspect-square rounded-xl overflow-hidden bg-muted">
             {product.images?.[0] ? (
-              <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+              <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                 <ShoppingCart className="w-12 h-12" />

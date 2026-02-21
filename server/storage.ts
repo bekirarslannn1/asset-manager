@@ -29,7 +29,13 @@ import {
   type ProductQuestion, type InsertProductQuestion,
   type OrderNote, type InsertOrderNote,
   type UserAddress, type InsertUserAddress,
-  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, bundles, testimonials, paymentMethods, blogCategories, blogPosts, blogComments, campaigns, abandonedCarts, stockNotifications, productQuestions, orderNotes, userAddresses,
+  type LoyaltyPoint, type InsertLoyaltyPoint,
+  type ReferralCode, type InsertReferralCode,
+  type ReferralUsage, type InsertReferralUsage,
+  type ShipmentTracking, type InsertShipmentTracking,
+  type FlashDeal, type InsertFlashDeal,
+  type ChatMessage, type InsertChatMessage,
+  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, bundles, testimonials, paymentMethods, blogCategories, blogPosts, blogComments, campaigns, abandonedCarts, stockNotifications, productQuestions, orderNotes, userAddresses, loyaltyPoints, referralCodes, referralUsages, shipmentTracking, flashDeals, chatMessages,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, ilike, desc, asc, gte, lte, sql, count, sum } from "drizzle-orm";
@@ -300,6 +306,10 @@ export class DatabaseStorage {
   }
   async getOrders(): Promise<Order[]> {
     return db.select().from(orders).orderBy(desc(orders.createdAt));
+  }
+  async getOrder(id: number): Promise<Order | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.id, id));
+    return order;
   }
   async getOrderByNumber(orderNumber: string): Promise<Order | undefined> {
     const [order] = await db.select().from(orders).where(eq(orders.orderNumber, orderNumber));
@@ -819,6 +829,83 @@ export class DatabaseStorage {
   async getReviewRatingDistribution(productId: number): Promise<{rating: number; count: number}[]> {
     const result = await db.select({ rating: reviews.rating, count: count() }).from(reviews).where(and(eq(reviews.productId, productId), eq(reviews.isApproved, true))).groupBy(reviews.rating);
     return result.map(r => ({ rating: r.rating, count: Number(r.count) }));
+  }
+
+  async getLoyaltyPoints(userId: number): Promise<LoyaltyPoint[]> {
+    return db.select().from(loyaltyPoints).where(eq(loyaltyPoints.userId, userId)).orderBy(desc(loyaltyPoints.createdAt));
+  }
+  async getLoyaltyBalance(userId: number): Promise<number> {
+    const result = await db.select({ total: sum(loyaltyPoints.points) }).from(loyaltyPoints).where(eq(loyaltyPoints.userId, userId));
+    return Number(result[0]?.total || 0);
+  }
+  async addLoyaltyPoints(data: InsertLoyaltyPoint): Promise<LoyaltyPoint> {
+    const [created] = await db.insert(loyaltyPoints).values(data).returning();
+    return created;
+  }
+
+  async getReferralCode(userId: number): Promise<ReferralCode | undefined> {
+    const [code] = await db.select().from(referralCodes).where(eq(referralCodes.userId, userId));
+    return code;
+  }
+  async getReferralCodeByCode(code: string): Promise<ReferralCode | undefined> {
+    const [ref] = await db.select().from(referralCodes).where(and(eq(referralCodes.code, code), eq(referralCodes.isActive, true)));
+    return ref;
+  }
+  async createReferralCode(data: InsertReferralCode): Promise<ReferralCode> {
+    const [created] = await db.insert(referralCodes).values(data).returning();
+    return created;
+  }
+  async incrementReferralUsage(id: number): Promise<void> {
+    await db.update(referralCodes).set({ usedCount: sql`${referralCodes.usedCount} + 1` }).where(eq(referralCodes.id, id));
+  }
+  async createReferralUsage(data: InsertReferralUsage): Promise<ReferralUsage> {
+    const [created] = await db.insert(referralUsages).values(data).returning();
+    return created;
+  }
+  async getReferralUsages(referralCodeId: number): Promise<ReferralUsage[]> {
+    return db.select().from(referralUsages).where(eq(referralUsages.referralCodeId, referralCodeId)).orderBy(desc(referralUsages.createdAt));
+  }
+
+  async getShipmentTracking(orderId: number): Promise<ShipmentTracking[]> {
+    return db.select().from(shipmentTracking).where(eq(shipmentTracking.orderId, orderId)).orderBy(asc(shipmentTracking.createdAt));
+  }
+  async addShipmentEvent(data: InsertShipmentTracking): Promise<ShipmentTracking> {
+    const [created] = await db.insert(shipmentTracking).values(data).returning();
+    return created;
+  }
+
+  async getFlashDeals(): Promise<FlashDeal[]> {
+    const now = new Date();
+    return db.select().from(flashDeals).where(and(eq(flashDeals.isActive, true), lte(flashDeals.startDate, now), gte(flashDeals.endDate, now))).orderBy(asc(flashDeals.endDate));
+  }
+  async getAllFlashDeals(): Promise<FlashDeal[]> {
+    return db.select().from(flashDeals).orderBy(desc(flashDeals.createdAt));
+  }
+  async createFlashDeal(data: InsertFlashDeal): Promise<FlashDeal> {
+    const [created] = await db.insert(flashDeals).values(data).returning();
+    return created;
+  }
+  async updateFlashDeal(id: number, data: Partial<InsertFlashDeal>): Promise<FlashDeal | undefined> {
+    const [updated] = await db.update(flashDeals).set(data).where(eq(flashDeals.id, id)).returning();
+    return updated;
+  }
+  async deleteFlashDeal(id: number): Promise<void> {
+    await db.delete(flashDeals).where(eq(flashDeals.id, id));
+  }
+
+  async getChatMessages(sessionId: string, limit: number = 50): Promise<ChatMessage[]> {
+    return db.select().from(chatMessages).where(eq(chatMessages.sessionId, sessionId)).orderBy(asc(chatMessages.createdAt)).limit(limit);
+  }
+  async addChatMessage(data: InsertChatMessage): Promise<ChatMessage> {
+    const [created] = await db.insert(chatMessages).values(data).returning();
+    return created;
+  }
+
+  async updateOrderTracking(id: number, data: { trackingNumber?: string; carrier?: string }): Promise<Order | undefined> {
+    const updateData: any = {};
+    if (data.trackingNumber) updateData.paymentId = data.trackingNumber;
+    const [updated] = await db.update(orders).set(updateData).where(eq(orders.id, id)).returning();
+    return updated;
   }
 }
 

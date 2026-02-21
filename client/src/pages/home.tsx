@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, ArrowRight, Send, Sparkles, Tag, Gift, Percent, ShoppingBag, Target, Search, Star, Quote } from "lucide-react";
 import ProductCard from "@/components/product-card";
+import FlashDeals from "@/components/flash-deals";
 import { useSettings } from "@/hooks/use-settings";
 import { useRecentlyViewed } from "@/hooks/use-recently-viewed";
 import { apiRequest } from "@/lib/queryClient";
@@ -516,6 +517,7 @@ function DefaultHomepage() {
   return (
     <>
       <HeroSlider />
+      <FlashDeals />
       <CategoryShowcase />
       <ProductSection title="Çok Satanlar" queryKey="/api/products/best-sellers" linkHref="/urunler?sort=best_seller" />
       <WizardPromoSection />

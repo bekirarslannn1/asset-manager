@@ -13,6 +13,7 @@ import {
   ShoppingCart, Heart, Search, Menu, X, Phone, Mail, MapPin,
   ChevronDown, User, Package, Truck, Shield, Award, MessageCircle,
   Instagram, Twitter, Facebook, Youtube, LogOut, Settings, ArrowLeftRight,
+  Clock, TrendingUp,
 } from "lucide-react";
 import type { Category, NavigationLink } from "@shared/schema";
 
@@ -200,16 +201,36 @@ function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [megaMenuOpen, setMegaMenuOpen] = useState(false);
+  const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
+  const megaMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const megaMenuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { totalItems } = useCart();
   const { getSetting } = useSettings();
 
   const { data: categories = [] } = useQuery<Category[]>({ queryKey: ["/api/categories"] });
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
     return () => clearTimeout(t);
   }, [searchQuery]);
+
+  // Load search history from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("searchHistory");
+    if (saved) {
+      try {
+        setSearchHistory(JSON.parse(saved));
+      } catch {
+        setSearchHistory([]);
+      }
+    }
+  }, []);
 
   const { data: suggestions = [] } = useQuery<{ id: number; name: string; slug: string; price: string; comparePrice: string | null; images: string[] | null }[]>({
     queryKey: [`/api/products/suggestions?q=${encodeURIComponent(debouncedQuery)}`],
@@ -218,19 +239,91 @@ function Header() {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setShowSuggestions(false);
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+        setSelectedIndex(-1);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      setLocation(`/urunler?search=${encodeURIComponent(searchQuery.trim())}`);
+  const handleMegaMenuEnter = () => {
+    if (megaMenuTimeoutRef.current) {
+      clearTimeout(megaMenuTimeoutRef.current);
+    }
+    setMegaMenuOpen(true);
+  };
+
+  const handleMegaMenuLeave = () => {
+    megaMenuTimeoutRef.current = setTimeout(() => {
+      setMegaMenuOpen(false);
+    }, 200);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (megaMenuTimeoutRef.current) {
+        clearTimeout(megaMenuTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const addToSearchHistory = (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    
+    let updated = [trimmed, ...searchHistory.filter(h => h !== trimmed)].slice(0, 5);
+    setSearchHistory(updated);
+    localStorage.setItem("searchHistory", JSON.stringify(updated));
+  };
+
+  const removeFromHistory = (query: string) => {
+    const updated = searchHistory.filter(h => h !== query);
+    setSearchHistory(updated);
+    localStorage.setItem("searchHistory", JSON.stringify(updated));
+  };
+
+  const handleSearch = (e: React.FormEvent | null, term?: string) => {
+    if (e) e.preventDefault();
+    const query = term || searchQuery.trim();
+    
+    if (query) {
+      addToSearchHistory(query);
+      setLocation(`/urunler?search=${encodeURIComponent(query)}`);
       setSearchQuery("");
       setSearchOpen(false);
       setShowSuggestions(false);
+      setSelectedIndex(-1);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    const displayItems = debouncedQuery.length >= 2 ? suggestions : [];
+    const totalItems = displayItems.length;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex(prev => (prev < totalItems - 1 ? prev + 1 : -1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex(prev => (prev > 0 ? prev - 1 : totalItems - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (selectedIndex >= 0 && selectedIndex < totalItems) {
+        const selected = displayItems[selectedIndex];
+        setLocation(`/urun/${selected.slug}`);
+        addToSearchHistory(searchQuery);
+        setSearchQuery("");
+        setSearchOpen(false);
+        setShowSuggestions(false);
+        setSelectedIndex(-1);
+      } else {
+        handleSearch(null);
+      }
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+      setSelectedIndex(-1);
     }
   };
 
@@ -259,21 +352,28 @@ function Header() {
                 Ana Sayfa
               </span>
             </Link>
-            <div className="relative group">
+            <div 
+              className="relative"
+              ref={megaMenuRef}
+              onMouseEnter={handleMegaMenuEnter}
+              onMouseLeave={handleMegaMenuLeave}
+            >
               <button className="px-3 py-2 text-sm font-medium hover:text-primary transition-colors flex items-center gap-1 rounded-md hover-elevate" data-testid="button-categories-menu">
                 Kategoriler <ChevronDown className="w-3.5 h-3.5" />
               </button>
-              <div className="absolute top-full left-0 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all pt-2 z-50">
-                <div className="bg-card border border-border rounded-xl shadow-xl p-4 min-w-[280px]">
-                  {categories.map((cat) => (
-                    <Link key={cat.id} href={`/kategori/${cat.slug}`}>
-                      <span className="block px-4 py-2.5 text-sm hover:text-primary hover:bg-muted rounded-lg transition-colors cursor-pointer" data-testid={`link-category-${cat.id}`}>
-                        {cat.name}
-                      </span>
-                    </Link>
-                  ))}
+              {megaMenuOpen && (
+                <div className="absolute top-full left-0 w-screen max-w-4xl mx-auto right-0 translate-x-1/2 right-1/2 mt-2 bg-card border border-border rounded-xl shadow-xl p-6 z-50 animate-in fade-in duration-200" data-testid="mega-menu">
+                  <div className="grid grid-cols-3 gap-4 md:grid-cols-4">
+                    {categories.map((cat) => (
+                      <Link key={cat.id} href={`/kategori/${cat.slug}`}>
+                        <div className="px-4 py-3 rounded-lg hover:bg-muted transition-colors cursor-pointer hover-elevate" data-testid={`mega-menu-item-${cat.id}`}>
+                          <span className="text-sm font-medium hover:text-primary transition-colors">{cat.name}</span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
             <Link href="/urunler">
               <span className="px-3 py-2 text-sm font-medium hover:text-primary transition-colors rounded-md hover-elevate cursor-pointer">
@@ -323,53 +423,109 @@ function Header() {
 
       {searchOpen && (
         <div className="border-t border-border bg-background px-4 py-3" data-testid="search-bar" ref={searchRef}>
-          <form onSubmit={handleSearch} className="max-w-2xl mx-auto flex gap-2 relative">
+          <form onSubmit={(e) => handleSearch(e)} className="max-w-2xl mx-auto flex gap-2 relative">
             <div className="flex-1 relative">
               <Input
+                ref={inputRef}
                 placeholder="Ürün ara... (örn: whey protein, kreatin, bcaa)"
                 value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setShowSuggestions(true); }}
+                onChange={(e) => { setSearchQuery(e.target.value); setShowSuggestions(true); setSelectedIndex(-1); }}
                 onFocus={() => setShowSuggestions(true)}
+                onKeyDown={handleKeyDown}
                 className="flex-1"
                 autoFocus
                 data-testid="input-search"
               />
-              {showSuggestions && suggestions.length > 0 && searchQuery.trim().length >= 2 && (
+              {showSuggestions && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden" data-testid="search-suggestions">
-                  {suggestions.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted transition-colors text-left"
-                      onClick={() => {
-                        setLocation(`/urun/${s.slug}`);
-                        setSearchQuery("");
-                        setSearchOpen(false);
-                        setShowSuggestions(false);
-                      }}
-                      data-testid={`suggestion-${s.id}`}
-                    >
-                      {s.images && s.images[0] && (
-                        <img src={s.images[0]} alt={s.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{s.name}</p>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-primary">{Number(s.price).toLocaleString("tr-TR")}₺</span>
-                          {s.comparePrice && (
-                            <span className="text-xs text-muted-foreground line-through">{Number(s.comparePrice).toLocaleString("tr-TR")}₺</span>
-                          )}
-                        </div>
+                  {/* Show search history when input is empty or has less than 2 chars */}
+                  {searchQuery.trim().length < 2 && searchHistory.length > 0 && (
+                    <>
+                      <div className="px-4 py-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border" data-testid="search-history-label">
+                        <Clock className="w-3 h-3" />
+                        Son Aramalar
                       </div>
-                    </button>
-                  ))}
-                  <button
-                    type="submit"
-                    className="w-full px-4 py-2.5 text-sm text-primary hover:bg-muted transition-colors border-t border-border font-medium"
-                    data-testid="button-search-all"
-                  >
-                    "{searchQuery}" için tüm sonuçları göster →
-                  </button>
+                      {searchHistory.map((item, idx) => (
+                        <div key={`history-${idx}`} className="flex items-center gap-2 px-4 py-2.5 hover:bg-muted transition-colors group" data-testid={`search-history-item-${idx}`}>
+                          <button
+                            type="button"
+                            className="flex-1 text-left flex items-center gap-2"
+                            onClick={() => handleSearch(null, item)}
+                          >
+                            <Clock className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                            <span className="text-sm text-foreground">{item}</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="p-1 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeFromHistory(item)}
+                            data-testid={`button-remove-history-${idx}`}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  
+                  {/* Show product suggestions when query >= 2 chars */}
+                  {debouncedQuery.length >= 2 && suggestions.length > 0 && (
+                    <>
+                      {searchHistory.length > 0 && (
+                        <div className="border-t border-border" />
+                      )}
+                      <div className="px-4 py-2 flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border" data-testid="search-suggestions-label">
+                        <TrendingUp className="w-3 h-3" />
+                        Öneriler
+                      </div>
+                      {suggestions.map((s, idx) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left ${
+                            selectedIndex === idx ? "bg-primary/10" : "hover:bg-muted"
+                          }`}
+                          onClick={() => {
+                            addToSearchHistory(searchQuery);
+                            setLocation(`/urun/${s.slug}`);
+                            setSearchQuery("");
+                            setSearchOpen(false);
+                            setShowSuggestions(false);
+                            setSelectedIndex(-1);
+                          }}
+                          onMouseEnter={() => setSelectedIndex(idx)}
+                          data-testid={`suggestion-${s.id}`}
+                        >
+                          {s.images && s.images[0] && (
+                            <img src={s.images[0]} alt={s.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{s.name}</p>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-primary">{Number(s.price).toLocaleString("tr-TR")}₺</span>
+                              {s.comparePrice && (
+                                <span className="text-xs text-muted-foreground line-through">{Number(s.comparePrice).toLocaleString("tr-TR")}₺</span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                      <button
+                        type="submit"
+                        className="w-full px-4 py-2.5 text-sm text-primary hover:bg-muted transition-colors border-t border-border font-medium"
+                        data-testid="button-search-all"
+                      >
+                        "{searchQuery}" için tüm sonuçları göster →
+                      </button>
+                    </>
+                  )}
+
+                  {/* Show empty state when query is 2+ chars but no suggestions */}
+                  {debouncedQuery.length >= 2 && suggestions.length === 0 && (
+                    <div className="px-4 py-6 text-center text-sm text-muted-foreground" data-testid="search-no-results">
+                      Ürün bulunamadı
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -383,11 +539,23 @@ function Header() {
           <Link href="/" onClick={() => setMobileMenuOpen(false)}>
             <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer">Ana Sayfa</span>
           </Link>
-          {categories.map((cat) => (
-            <Link key={cat.id} href={`/kategori/${cat.slug}`} onClick={() => setMobileMenuOpen(false)}>
-              <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm cursor-pointer">{cat.name}</span>
-            </Link>
-          ))}
+          <button
+            onClick={() => setMobileCategoriesOpen(!mobileCategoriesOpen)}
+            className="w-full text-left px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer flex items-center justify-between"
+            data-testid="button-mobile-categories"
+          >
+            Kategoriler
+            <ChevronDown className={`w-4 h-4 transition-transform ${mobileCategoriesOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {mobileCategoriesOpen && (
+            <div className="space-y-1 bg-muted/30 rounded-lg p-2 ml-2" data-testid="mobile-categories-list">
+              {categories.map((cat) => (
+                <Link key={cat.id} href={`/kategori/${cat.slug}`} onClick={() => { setMobileMenuOpen(false); setMobileCategoriesOpen(false); }}>
+                  <span className="block px-4 py-2.5 rounded-lg hover:bg-muted text-sm cursor-pointer" data-testid={`mobile-link-category-${cat.id}`}>{cat.name}</span>
+                </Link>
+              ))}
+            </div>
+          )}
           <Link href="/urunler" onClick={() => setMobileMenuOpen(false)}>
             <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer">Tüm Ürünler</span>
           </Link>

@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star, ShoppingCart, Heart, Minus, Plus, Truck, Shield, RotateCcw, ChevronRight, Tag, Share2, Bell } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Star, ShoppingCart, Heart, Minus, Plus, Truck, Shield, RotateCcw, ChevronRight, Tag, Share2, Bell, Sparkles } from "lucide-react";
 import { SiFacebook, SiX, SiWhatsapp, SiTelegram } from "react-icons/si";
 import { formatPrice, discountPercent } from "@/lib/utils";
 import { useCart } from "@/hooks/use-cart";
@@ -39,6 +40,10 @@ export default function ProductDetailPage() {
     enabled: !!product?.id,
   });
   const { data: featured = [] } = useQuery<Product[]>({ queryKey: ["/api/products/featured"] });
+  const { data: recommendations = [], isLoading: recommendationsLoading } = useQuery<Product[]>({
+    queryKey: ['/api/recommendations', product?.id],
+    enabled: !!product?.id,
+  });
   const { addToRecentlyViewed } = useRecentlyViewed();
 
   useEffect(() => {
@@ -672,6 +677,35 @@ export default function ProductDetailPage() {
       })()}
 
       <RecentlyViewedInDetail currentProductId={product.id} />
+
+      {recommendations.length > 0 || recommendationsLoading ? (
+        <section className="mt-16" data-testid="recommendations-section">
+          <div className="flex items-center gap-2 mb-8">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <h2 className="text-2xl font-bold font-heading">Bu Ürünü Alanlar Bunları da Aldı</h2>
+          </div>
+          
+          {recommendationsLoading ? (
+            <div className="flex gap-4 overflow-x-auto pb-4" data-testid="recommendations-skeleton">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex-shrink-0 w-48">
+                  <Skeleton className="aspect-[4/3] rounded-lg mb-3" />
+                  <Skeleton className="h-4 w-full mb-2" />
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4" data-testid="recommendations-carousel">
+              {recommendations.slice(0, 6).map((product) => (
+                <div key={product.id} className="flex-shrink-0 w-48" data-testid={`recommendation-card-${product.id}`}>
+                  <ProductCard product={product} />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }

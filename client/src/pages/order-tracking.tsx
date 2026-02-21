@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { Search, Package, Truck, CheckCircle, Clock, ChevronRight, MapPin } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest } from "@/lib/queryClient";
 import { formatPrice } from "@/lib/utils";
-import type { Order } from "@shared/schema";
+import type { Order, ShipmentTracking } from "@shared/schema";
 
 const statusMap: Record<string, string> = {
   pending: "Sipariş Alındı",
@@ -29,6 +31,151 @@ const statusOrder = ["pending", "processing", "shipped", "delivered"];
 function getStatusIndex(status: string): number {
   const idx = statusOrder.indexOf(status);
   return idx >= 0 ? idx : -1;
+}
+
+const shipmentStatusColorMap: Record<string, { bg: string; border: string; text: string }> = {
+  "Sipariş Alındı": { bg: "bg-blue-100 dark:bg-blue-900", border: "border-blue-400 dark:border-blue-500", text: "text-blue-700 dark:text-blue-300" },
+  "Hazırlanıyor": { bg: "bg-yellow-100 dark:bg-yellow-900", border: "border-yellow-400 dark:border-yellow-500", text: "text-yellow-700 dark:text-yellow-300" },
+  "Kargoya Verildi": { bg: "bg-orange-100 dark:bg-orange-900", border: "border-orange-400 dark:border-orange-500", text: "text-orange-700 dark:text-orange-300" },
+  "Dağıtımda": { bg: "bg-purple-100 dark:bg-purple-900", border: "border-purple-400 dark:border-purple-500", text: "text-purple-700 dark:text-purple-300" },
+  "Teslim Edildi": { bg: "bg-green-100 dark:bg-green-900", border: "border-green-400 dark:border-green-500", text: "text-green-700 dark:text-green-300" },
+};
+
+const shipmentStatusIconMap: Record<string, any> = {
+  "Sipariş Alındı": Clock,
+  "Hazırlanıyor": Package,
+  "Kargoya Verildi": Truck,
+  "Dağıtımda": MapPin,
+  "Teslim Edildi": CheckCircle,
+};
+
+function formatDateTime(date: string | Date): string {
+  const dateObj = typeof date === "string" ? new Date(date) : date;
+  const day = dateObj.getDate().toString().padStart(2, "0");
+  const month = (dateObj.getMonth() + 1).toString().padStart(2, "0");
+  const year = dateObj.getFullYear();
+  const hours = dateObj.getHours().toString().padStart(2, "0");
+  const minutes = dateObj.getMinutes().toString().padStart(2, "0");
+  return `${day}.${month}.${year} ${hours}:${minutes}`;
+}
+
+function ShipmentTimeline({ orderId }: { orderId: number }) {
+  const { data: events, isLoading } = useQuery({
+    queryKey: ["/api/shipment", orderId],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/shipment/${orderId}`);
+      return res.json() as Promise<ShipmentTracking[]>;
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="text-lg">Kargo Takibi</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="flex gap-4">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="h-3 w-2/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!events || events.length === 0) {
+    return (
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="text-lg">Kargo Takibi</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center text-muted-foreground" data-testid="text-no-tracking-events">
+            Henüz kargo hareketi yok
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="mb-8">
+      <CardHeader>
+        <CardTitle className="text-lg" data-testid="text-shipment-timeline-title">Kargo Takibi</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-0" data-testid="shipment-timeline">
+          {events.map((event, index) => {
+            const colors = shipmentStatusColorMap[event.status] || shipmentStatusColorMap["Sipariş Alındı"];
+            const IconComponent = shipmentStatusIconMap[event.status] || Clock;
+            const isLast = index === events.length - 1;
+
+            return (
+              <div key={event.id} className="flex gap-4 pb-8 relative" data-testid={`shipment-event-${event.id}`}>
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`w-10 h-10 rounded-full border-2 flex items-center justify-center z-10 relative ${colors.bg} ${colors.border}`}
+                    data-testid={`shipment-status-dot-${event.id}`}
+                  >
+                    <IconComponent className={`h-5 w-5 ${colors.text}`} />
+                  </div>
+                  {!isLast && (
+                    <div
+                      className={`w-1 flex-1 my-2 ${colors.bg}`}
+                      style={{ minHeight: "60px" }}
+                      data-testid={`shipment-line-${event.id}`}
+                    />
+                  )}
+                </div>
+
+                <div className="flex-1 pt-1">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div>
+                      <p className={`font-semibold text-sm ${colors.text}`} data-testid={`shipment-status-${event.id}`}>
+                        {event.status}
+                      </p>
+                      {event.description && (
+                        <p className="text-sm text-muted-foreground mt-1" data-testid={`shipment-description-${event.id}`}>
+                          {event.description}
+                        </p>
+                      )}
+                      {event.location && (
+                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1" data-testid={`shipment-location-${event.id}`}>
+                          <MapPin className="h-3 w-3" />
+                          {event.location}
+                        </p>
+                      )}
+                      {event.trackingNumber && (
+                        <p className="text-xs text-muted-foreground mt-1" data-testid={`shipment-tracking-number-${event.id}`}>
+                          Kargo No: {event.trackingNumber}
+                        </p>
+                      )}
+                      {event.carrier && (
+                        <p className="text-xs text-muted-foreground" data-testid={`shipment-carrier-${event.id}`}>
+                          Kargo Şirketi: {event.carrier}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground whitespace-nowrap" data-testid={`shipment-datetime-${event.id}`}>
+                      {formatDateTime(event.createdAt)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function OrderTrackingPage() {
@@ -164,6 +311,8 @@ export default function OrderTrackingPage() {
           </CardContent>
         </Card>
       )}
+
+      {order && <ShipmentTimeline orderId={order.id} />}
 
       {order && (
         <>

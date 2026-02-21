@@ -2,7 +2,8 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { seedDatabase } from "./seed";
-import { insertBlogCategorySchema, insertBlogPostSchema, insertCampaignSchema } from "@shared/schema";
+import { insertBlogCategorySchema, insertBlogPostSchema, insertCampaignSchema, insertLoyaltyPointSchema, insertReferralCodeSchema, insertShipmentTrackingSchema, insertFlashDealSchema, insertChatMessageSchema } from "@shared/schema";
+import OpenAI from "openai";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Iyzipay from "iyzipay";
@@ -42,7 +43,7 @@ function getTokenFromReq(req: Request) {
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   super_admin: ["*"],
-  admin: ["products", "categories", "brands", "banners", "pages", "settings", "orders", "coupons", "users", "variants", "layouts", "audit_logs", "blog"],
+  admin: ["products", "categories", "brands", "banners", "pages", "settings", "orders", "coupons", "users", "variants", "layouts", "audit_logs", "blog", "campaigns"],
   seller: ["products", "variants", "orders"],
   support: ["orders", "users"],
   logistics: ["orders"],
@@ -349,6 +350,287 @@ export async function registerRoutes(
   app.patch("/api/orders/:id/status", requireAuth, requireRole("super_admin", "admin"), async (req, res) => {
     const order = await storage.updateOrderStatus(Number(req.params.id), req.body.status);
     res.json(order);
+  });
+
+  app.get("/api/orders/:id/invoice", async (req, res) => {
+    const order = await storage.getOrder(Number(req.params.id));
+    if (!order) return res.status(404).json({ error: "Sipariş bulunamadı" });
+
+    const items = Array.isArray(order.items) ? order.items : [];
+    const address = order.shippingAddress as any || {};
+    const orderDate = new Date(order.createdAt).toLocaleDateString("tr-TR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const itemsHtml = items.map((item: any, idx: number) => `
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #e0e0e0;">${escapeXml(item.name || "")}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e0e0e0; text-align: center;">${item.quantity || 1}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e0e0e0; text-align: right;">${typeof item.price === 'number' ? item.price.toFixed(2) : item.price || "0.00"} ₺</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e0e0e0; text-align: right;">${(typeof item.price === 'number' ? item.price * (item.quantity || 1) : parseFloat(String(item.price) || "0") * (item.quantity || 1)).toFixed(2)} ₺</td>
+      </tr>
+    `).join("");
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="tr">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>FATURA - ${order.orderNumber}</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: 'Arial', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            color: #333;
+          }
+          .invoice-container {
+            background: white;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 40px;
+            border-bottom: 3px solid #39FF14;
+            padding-bottom: 20px;
+          }
+          .company-info h1 {
+            font-size: 32px;
+            color: #39FF14;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+          }
+          .company-details {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.6;
+          }
+          .invoice-info {
+            text-align: right;
+          }
+          .invoice-info h2 {
+            font-size: 28px;
+            color: #39FF14;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+          }
+          .invoice-details {
+            font-size: 13px;
+            line-height: 1.8;
+          }
+          .invoice-details p {
+            margin-bottom: 8px;
+          }
+          .invoice-details strong {
+            color: #333;
+          }
+          .customer-section {
+            margin-bottom: 30px;
+          }
+          .section-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #39FF14;
+            text-transform: uppercase;
+          }
+          .customer-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            font-size: 12px;
+            line-height: 1.8;
+          }
+          .customer-info p {
+            margin-bottom: 5px;
+          }
+          .customer-info strong {
+            color: #333;
+          }
+          table {
+            width: 100%;
+            margin-bottom: 30px;
+            border-collapse: collapse;
+          }
+          th {
+            background-color: #39FF14;
+            color: #000;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 13px;
+          }
+          td {
+            padding: 10px;
+            font-size: 12px;
+          }
+          .totals {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 30px;
+          }
+          .totals-table {
+            width: 300px;
+            border-collapse: collapse;
+          }
+          .totals-table tr {
+            border-bottom: 1px solid #e0e0e0;
+          }
+          .totals-table td {
+            padding: 10px 15px;
+            font-size: 12px;
+          }
+          .totals-table td:first-child {
+            text-align: left;
+            color: #666;
+          }
+          .totals-table td:last-child {
+            text-align: right;
+            font-weight: bold;
+            color: #333;
+          }
+          .total-row {
+            background-color: #f9f9f9;
+            font-weight: bold;
+            font-size: 14px !important;
+            color: #39FF14 !important;
+          }
+          .footer {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 11px;
+            color: #999;
+            margin-top: 20px;
+          }
+          @media print {
+            body {
+              background: white;
+              padding: 0;
+            }
+            .invoice-container {
+              max-width: 100%;
+              padding: 0;
+              box-shadow: none;
+            }
+            .footer {
+              page-break-inside: avoid;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="invoice-container">
+          <div class="header">
+            <div class="company-info">
+              <h1>FATURA</h1>
+              <div class="company-details">
+                <p><strong>Şirket Adı</strong></p>
+                <p>Adres: İstanbul, Türkiye</p>
+                <p>E-posta: info@example.com</p>
+              </div>
+            </div>
+            <div class="invoice-info">
+              <h2>Sipariş Detayı</h2>
+              <div class="invoice-details">
+                <p><strong>Sipariş No:</strong> ${escapeXml(order.orderNumber)}</p>
+                <p><strong>Tarih:</strong> ${escapeXml(orderDate)}</p>
+                <p><strong>Durum:</strong> ${escapeXml(order.status || "pending")}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="customer-section">
+            <div class="section-title">Müşteri Bilgileri</div>
+            <div class="customer-info">
+              <div>
+                <p><strong>Ad Soyad:</strong></p>
+                <p>${escapeXml(order.customerName || address.fullName || "")}</p>
+                <p><strong>E-posta:</strong></p>
+                <p>${escapeXml(order.customerEmail || "")}</p>
+                <p><strong>Telefon:</strong></p>
+                <p>${escapeXml(order.customerPhone || address.phone || "")}</p>
+              </div>
+              <div>
+                <p><strong>Teslimat Adresi:</strong></p>
+                <p>${escapeXml(address.address || "")}</p>
+                <p>${escapeXml([address.district, address.city, address.zipCode].filter(Boolean).join(", "))}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="customer-section">
+            <div class="section-title">Sipariş Kalemleri</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Ürün</th>
+                  <th style="text-align: center;">Miktar</th>
+                  <th style="text-align: right;">Birim Fiyat</th>
+                  <th style="text-align: right;">Toplam</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="totals">
+            <table class="totals-table">
+              <tr>
+                <td>Ara Toplam:</td>
+                <td>${typeof order.subtotal === 'number' ? order.subtotal.toFixed(2) : order.subtotal || "0.00"} ₺</td>
+              </tr>
+              <tr>
+                <td>Kargo Ücreti:</td>
+                <td>${typeof order.shippingCost === 'number' ? order.shippingCost.toFixed(2) : order.shippingCost || "0.00"} ₺</td>
+              </tr>
+              ${parseFloat(String(order.discount) || "0") > 0 ? `
+              <tr>
+                <td>İndirim:</td>
+                <td>-${typeof order.discount === 'number' ? order.discount.toFixed(2) : order.discount || "0.00"} ₺</td>
+              </tr>
+              ` : ""}
+              <tr class="total-row">
+                <td>TOPLAM:</td>
+                <td>${typeof order.total === 'number' ? order.total.toFixed(2) : order.total || "0.00"} ₺</td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="footer">
+            <p>Bu fatura elektronik olarak oluşturulmuştur. Tarih: ${new Date().toLocaleDateString("tr-TR")}</p>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            window.print();
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    res.set("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
   });
 
   app.get("/api/banners", async (req, res) => {
@@ -1663,6 +1945,210 @@ export async function registerRoutes(
     try {
       await storage.deleteBlogComment(Number(req.params.id));
       res.json({ success: true });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Loyalty Points
+  app.get("/api/loyalty/balance", requireAuth, async (req: any, res) => {
+    try {
+      const balance = await storage.getLoyaltyBalance(req.user.id);
+      res.json({ balance });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+  app.get("/api/loyalty/history", requireAuth, async (req: any, res) => {
+    try {
+      const history = await storage.getLoyaltyPoints(req.user.id);
+      res.json(history);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Referral System
+  app.get("/api/referral/my-code", requireAuth, async (req: any, res) => {
+    try {
+      let code = await storage.getReferralCode(req.user.id);
+      if (!code) {
+        const genCode = `SUP${req.user.id}${Date.now().toString(36).toUpperCase().slice(-4)}`;
+        code = await storage.createReferralCode({ userId: req.user.id, code: genCode, rewardPoints: 100 });
+      }
+      const usages = await storage.getReferralUsages(code.id);
+      res.json({ ...code, usages });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+  app.post("/api/referral/apply", async (req, res) => {
+    try {
+      const { code, userId } = req.body;
+      const referral = await storage.getReferralCodeByCode(code);
+      if (!referral) return res.status(404).json({ error: "Geçersiz referans kodu" });
+      if (referral.userId === userId) return res.status(400).json({ error: "Kendi kodunuzu kullanamazsınız" });
+      await storage.createReferralUsage({ referralCodeId: referral.id, referrerId: referral.userId, referredId: userId });
+      await storage.incrementReferralUsage(referral.id);
+      await storage.addLoyaltyPoints({ userId: referral.userId, points: referral.rewardPoints || 100, type: "referral", description: `Referans ödülü` });
+      await storage.addLoyaltyPoints({ userId, points: 50, type: "referral_bonus", description: "Referans ile kayıt bonusu" });
+      res.json({ success: true });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Shipment Tracking
+  app.get("/api/shipment/:orderId", async (req, res) => {
+    try {
+      const events = await storage.getShipmentTracking(Number(req.params.orderId));
+      res.json(events);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+  app.post("/api/admin/shipment", requirePermission("orders"), async (req, res) => {
+    try {
+      const parsed = insertShipmentTrackingSchema.parse(req.body);
+      const event = await storage.addShipmentEvent(parsed);
+      res.status(201).json(event);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Flash Deals / Countdown Campaigns
+  app.get("/api/flash-deals", async (_req, res) => {
+    try {
+      const deals = await storage.getFlashDeals();
+      res.json(deals);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+  app.get("/api/admin/flash-deals", requirePermission("campaigns"), async (_req, res) => {
+    try {
+      const deals = await storage.getAllFlashDeals();
+      res.json(deals);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+  app.post("/api/admin/flash-deals", requirePermission("campaigns"), async (req, res) => {
+    try {
+      const parsed = insertFlashDealSchema.parse(req.body);
+      const deal = await storage.createFlashDeal(parsed);
+      res.status(201).json(deal);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+  app.put("/api/admin/flash-deals/:id", requirePermission("campaigns"), async (req, res) => {
+    try {
+      const updated = await storage.updateFlashDeal(Number(req.params.id), req.body);
+      res.json(updated);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+  app.delete("/api/admin/flash-deals/:id", requirePermission("campaigns"), async (req, res) => {
+    try {
+      await storage.deleteFlashDeal(Number(req.params.id));
+      res.json({ success: true });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // AI Chatbot
+  const openai = new OpenAI({ apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY, baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL });
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { message, sessionId } = req.body;
+      if (!message || !sessionId) return res.status(400).json({ error: "Mesaj ve oturum kimliği gerekli" });
+      await storage.addChatMessage({ sessionId, role: "user", content: message });
+      const history = await storage.getChatMessages(sessionId, 20);
+      const products = await storage.getProducts({});
+      const categories = await storage.getCategories();
+      const systemPrompt = `Sen bir Türkçe e-ticaret müşteri destek asistanısın. Supplement ve spor gıda ürünleri konusunda uzmanlaştın. Mağazada şu kategoriler var: ${categories.map(c => c.name).join(", ")}. ${products.length} ürün mevcut. Müşterilere kibar, profesyonel ve yardımsever bir şekilde yanıt ver. Ürün önerileri yapabilir, sipariş takibi hakkında bilgi verebilir, kargo ve iade politikaları hakkında bilgilendirebilirsin.`;
+      const msgs: any[] = [{ role: "system", content: systemPrompt }, ...history.map(m => ({ role: m.role, content: m.content }))];
+      const completion = await openai.chat.completions.create({ model: "gpt-4o-mini", messages: msgs, max_tokens: 500, temperature: 0.7 });
+      const reply = completion.choices[0]?.message?.content || "Üzgünüm, şu anda yanıt veremiyorum.";
+      await storage.addChatMessage({ sessionId, role: "assistant", content: reply });
+      res.json({ reply });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+  app.get("/api/chat/:sessionId", async (req, res) => {
+    try {
+      const messages = await storage.getChatMessages(req.params.sessionId);
+      res.json(messages);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // AI Recommendations
+  app.get("/api/recommendations/:productId", async (req, res) => {
+    try {
+      const productId = Number(req.params.productId);
+      const product = await storage.getProduct(productId);
+      if (!product) return res.status(404).json({ error: "Ürün bulunamadı" });
+      const allProducts = await storage.getProducts({ categoryId: product.categoryId ? String(product.categoryId) : undefined });
+      const related = allProducts.filter(p => p.id !== productId).slice(0, 8);
+      res.json(related);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Admin Analytics
+  app.get("/api/admin/analytics", requirePermission("orders"), async (_req, res) => {
+    try {
+      const allOrders = await storage.getOrders();
+      const allProducts = await storage.getProducts({});
+      const allUsers = await storage.getUsers();
+      const allReviews = await storage.getAllReviews();
+      const totalRevenue = allOrders.filter(o => o.status !== "cancelled").reduce((s, o) => s + Number(o.totalAmount), 0);
+      const monthlyOrders: Record<string, number> = {};
+      const monthlyRevenue: Record<string, number> = {};
+      allOrders.forEach(o => {
+        const month = new Date(o.createdAt).toISOString().slice(0, 7);
+        monthlyOrders[month] = (monthlyOrders[month] || 0) + 1;
+        if (o.status !== "cancelled") monthlyRevenue[month] = (monthlyRevenue[month] || 0) + Number(o.totalAmount);
+      });
+      const statusCounts: Record<string, number> = {};
+      allOrders.forEach(o => { statusCounts[o.status] = (statusCounts[o.status] || 0) + 1; });
+      const categoryBreakdown: Record<string, number> = {};
+      allProducts.forEach(p => {
+        const cat = p.categoryId ? String(p.categoryId) : "Diğer";
+        categoryBreakdown[cat] = (categoryBreakdown[cat] || 0) + 1;
+      });
+      res.json({
+        totalOrders: allOrders.length,
+        totalRevenue,
+        totalProducts: allProducts.length,
+        totalUsers: allUsers.length,
+        totalReviews: allReviews.length,
+        avgOrderValue: allOrders.length ? totalRevenue / allOrders.filter(o => o.status !== "cancelled").length : 0,
+        monthlyOrders: Object.entries(monthlyOrders).map(([month, count]) => ({ month, count })),
+        monthlyRevenue: Object.entries(monthlyRevenue).map(([month, revenue]) => ({ month, revenue })),
+        statusCounts: Object.entries(statusCounts).map(([status, count]) => ({ status, count })),
+        categoryBreakdown: Object.entries(categoryBreakdown).map(([category, count]) => ({ category, count })),
+      });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Bulk CSV Operations
+  app.post("/api/admin/products/bulk-csv", requirePermission("products"), async (req, res) => {
+    try {
+      const { csvData } = req.body;
+      if (!csvData) return res.status(400).json({ error: "CSV verisi gerekli" });
+      const lines = csvData.trim().split("\n");
+      const headers = lines[0].split(",").map((h: string) => h.trim().toLowerCase());
+      const results: { success: number; errors: string[] } = { success: 0, errors: [] };
+      for (let i = 1; i < lines.length; i++) {
+        try {
+          const values = lines[i].split(",").map((v: string) => v.trim());
+          const row: Record<string, any> = {};
+          headers.forEach((h: string, idx: number) => { row[h] = values[idx]; });
+          await storage.createProduct({
+            name: row.name || row.ad || "",
+            slug: (row.slug || row.name || "").toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-"),
+            description: row.description || row.aciklama || "",
+            price: row.price || row.fiyat || "0",
+            categoryId: row.categoryid ? Number(row.categoryid) : null,
+            brandId: row.brandid ? Number(row.brandid) : null,
+            image: row.image || row.resim || "",
+            isActive: true,
+          });
+          results.success++;
+        } catch (lineErr: any) {
+          results.errors.push(`Satır ${i + 1}: ${lineErr.message}`);
+        }
+      }
+      res.json(results);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+  app.get("/api/admin/products/export-csv", requirePermission("products"), async (_req, res) => {
+    try {
+      const allProducts = await storage.getProducts({});
+      const headers = "id,name,slug,price,stock,categoryId,brandId,isActive";
+      const rows = allProducts.map(p => `${p.id},${(p.name || "").replace(/,/g, ";")},${p.slug},${p.price},${p.stock ?? ""},${p.categoryId ?? ""},${p.brandId ?? ""},${p.isActive}`);
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=products.csv");
+      res.send([headers, ...rows].join("\n"));
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 

@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Layout from "@/components/layout";
 import ThemeEngine from "@/components/theme-engine";
 import CookieConsent from "@/components/cookie-consent";
+import ChatWidget from "@/components/chat-widget";
 import HomePage from "@/pages/home";
 import ProductsPage from "@/pages/products";
 import ProductDetailPage from "@/pages/product-detail";
@@ -63,6 +64,7 @@ function App() {
         <Toaster />
         <Router />
         <CookieConsent />
+        <ChatWidget />
       </TooltipProvider>
     </QueryClientProvider>
   );

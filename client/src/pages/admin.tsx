@@ -12,10 +12,12 @@ import {
   BarChart3, Package, Layers, Users, Shield, Settings, Palette, LayoutGrid, FileText,
   Image, ScrollText, Lock, LogOut, Boxes, Loader2, Tag, ShoppingCart, Star, Ticket,
   Navigation, Mail, MessageSquareQuote, CreditCard, BookOpen, Megaphone, MessageCircleQuestion, Bell,
+  LineChart, Zap, Truck, Upload,
 } from "lucide-react";
 import { ROLE_COLORS } from "./admin/shared";
 
 import DashboardTab from "./admin/dashboard-tab";
+import { AnalyticsTab } from "./admin/analytics-tab";
 import ProductsTab from "./admin/products-tab";
 import CategoriesTab from "./admin/categories-tab";
 import OrdersTab from "./admin/orders-tab";
@@ -40,6 +42,9 @@ import BlogTab from "./admin/blog-tab";
 import CampaignsTab from "./admin/campaigns-tab";
 import QuestionsTab from "./admin/questions-tab";
 import StockNotificationsTab from "./admin/stock-notifications-tab";
+import { FlashDealsTab } from "./admin/flash-deals-tab";
+import { ShipmentTab } from "./admin/shipment-tab";
+import { BulkCsvTab } from "./admin/bulk-csv-tab";
 
 function AdminLoginGate({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("admin_token"));
@@ -189,6 +194,7 @@ export default function AdminPage() {
         <Tabs defaultValue="dashboard" data-testid="admin-tabs">
           <TabsList className="bg-card border border-border mb-6 flex-wrap h-auto gap-1 p-1">
             <TabsTrigger value="dashboard" className="gap-1.5" data-testid="tab-dashboard"><BarChart3 className="w-3.5 h-3.5" /> Panel</TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-1.5" data-testid="tab-analytics"><LineChart className="w-3.5 h-3.5" /> Analitik</TabsTrigger>
             <TabsTrigger value="products" className="gap-1.5" data-testid="tab-products"><Package className="w-3.5 h-3.5" /> Urunler</TabsTrigger>
             <TabsTrigger value="categories" className="gap-1.5" data-testid="tab-categories"><Layers className="w-3.5 h-3.5" /> Kategoriler</TabsTrigger>
             <TabsTrigger value="orders" className="gap-1.5" data-testid="tab-orders"><ShoppingCart className="w-3.5 h-3.5" /> Siparisler</TabsTrigger>
@@ -211,11 +217,15 @@ export default function AdminPage() {
             <TabsTrigger value="blog" className="gap-1.5" data-testid="tab-blog"><BookOpen className="w-3.5 h-3.5" /> Blog</TabsTrigger>
             <TabsTrigger value="questions" className="gap-1.5" data-testid="tab-questions"><MessageCircleQuestion className="w-3.5 h-3.5" /> S&C</TabsTrigger>
             <TabsTrigger value="stock-notifications" className="gap-1.5" data-testid="tab-stock-notifications"><Bell className="w-3.5 h-3.5" /> Stok Bildirim</TabsTrigger>
+            <TabsTrigger value="flash-deals" className="gap-1.5" data-testid="tab-flash-deals"><Zap className="w-3.5 h-3.5" /> Flash</TabsTrigger>
+            <TabsTrigger value="shipment" className="gap-1.5" data-testid="tab-shipment"><Truck className="w-3.5 h-3.5" /> Kargo</TabsTrigger>
+            <TabsTrigger value="bulk-csv" className="gap-1.5" data-testid="tab-bulk-csv"><Upload className="w-3.5 h-3.5" /> CSV</TabsTrigger>
             <TabsTrigger value="pages" className="gap-1.5" data-testid="tab-pages"><FileText className="w-3.5 h-3.5" /> Sayfalar</TabsTrigger>
             <TabsTrigger value="settings" className="gap-1.5" data-testid="tab-settings"><Settings className="w-3.5 h-3.5" /> Ayarlar</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard"><DashboardTab /></TabsContent>
+          <TabsContent value="analytics"><AnalyticsTab /></TabsContent>
           <TabsContent value="products"><ProductsTab /></TabsContent>
           <TabsContent value="categories"><CategoriesTab /></TabsContent>
           <TabsContent value="orders"><OrdersTab /></TabsContent>
@@ -238,6 +248,9 @@ export default function AdminPage() {
           <TabsContent value="blog"><BlogTab /></TabsContent>
           <TabsContent value="questions"><QuestionsTab /></TabsContent>
           <TabsContent value="stock-notifications"><StockNotificationsTab /></TabsContent>
+          <TabsContent value="flash-deals"><FlashDealsTab /></TabsContent>
+          <TabsContent value="shipment"><ShipmentTab /></TabsContent>
+          <TabsContent value="bulk-csv"><BulkCsvTab /></TabsContent>
           <TabsContent value="pages"><PagesTab /></TabsContent>
           <TabsContent value="settings"><SettingsTab /></TabsContent>
         </Tabs>
