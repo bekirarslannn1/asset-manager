@@ -13,7 +13,7 @@ export function useCart() {
   });
 
   const addMutation = useMutation({
-    mutationFn: (data: { productId: number; quantity: number; selectedFlavor?: string; selectedWeight?: string }) =>
+    mutationFn: (data: { productId: number; variantId?: number; quantity: number; selectedFlavor?: string; selectedWeight?: string }) =>
       apiRequest("POST", "/api/cart", { ...data, sessionId }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [`/api/cart?sessionId=${sessionId}`] }),
   });

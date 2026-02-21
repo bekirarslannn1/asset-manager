@@ -1,21 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star, ShoppingCart, Heart, Minus, Plus, Truck, Shield, RotateCcw, ChevronRight } from "lucide-react";
+import { Star, ShoppingCart, Heart, Minus, Plus, Truck, Shield, RotateCcw, ChevronRight, Tag } from "lucide-react";
 import { formatPrice, discountPercent } from "@/lib/utils";
 import { useCart } from "@/hooks/use-cart";
 import { useFavorites } from "@/hooks/use-favorites";
 import ProductCard from "@/components/product-card";
-import type { Product, Review } from "@shared/schema";
+import type { Product, Review, ProductVariant } from "@shared/schema";
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const { data: product, isLoading } = useQuery<Product>({ queryKey: [`/api/products/${slug}`] });
   const { data: reviews = [] } = useQuery<Review[]>({
     queryKey: ["/api/products", product?.id, "reviews"],
+    enabled: !!product?.id,
+  });
+  const { data: variants = [] } = useQuery<ProductVariant[]>({
+    queryKey: ["/api/products", product?.id, "variants"],
     enabled: !!product?.id,
   });
   const { data: featured = [] } = useQuery<Product[]>({ queryKey: ["/api/products/featured"] });
@@ -26,6 +30,22 @@ export default function ProductDetailPage() {
   const [selectedFlavor, setSelectedFlavor] = useState("");
   const [selectedWeight, setSelectedWeight] = useState("");
   const [quantity, setQuantity] = useState(1);
+
+  const hasVariants = variants.length > 0;
+
+  const activeVariant = useMemo(() => {
+    if (!hasVariants) return null;
+    return variants.find(v =>
+      v.isActive &&
+      (!selectedFlavor || v.flavor === selectedFlavor) &&
+      (!selectedWeight || v.weight === selectedWeight)
+    ) || null;
+  }, [variants, selectedFlavor, selectedWeight, hasVariants]);
+
+  const displayPrice = activeVariant ? activeVariant.price : product?.price || "0";
+  const displayComparePrice = activeVariant ? activeVariant.comparePrice : product?.comparePrice;
+  const displayStock = activeVariant ? activeVariant.stock : product?.stock;
+  const displaySku = activeVariant ? activeVariant.sku : product?.sku;
 
   if (isLoading) {
     return (
@@ -51,13 +71,14 @@ export default function ProductDetailPage() {
     );
   }
 
-  const discount = product.comparePrice ? discountPercent(product.price, product.comparePrice) : 0;
+  const discount = displayComparePrice ? discountPercent(displayPrice, displayComparePrice) : 0;
   const images = product.images?.length ? product.images : [];
   const nutrition = product.nutritionFacts as Record<string, string> | null;
 
   const handleAddToCart = () => {
     addToCart({
       productId: product.id,
+      variantId: activeVariant?.id || undefined,
       quantity,
       selectedFlavor: selectedFlavor || undefined,
       selectedWeight: selectedWeight || undefined,
@@ -128,11 +149,19 @@ export default function ProductDetailPage() {
 
           <div className="mt-6">
             <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-bold text-primary" data-testid="text-product-price">{formatPrice(product.price)}</span>
-              {product.comparePrice && parseFloat(product.comparePrice) > parseFloat(product.price) && (
-                <span className="text-lg text-muted-foreground line-through">{formatPrice(product.comparePrice)}</span>
+              <span className="text-3xl font-bold text-primary" data-testid="text-product-price">{formatPrice(displayPrice)}</span>
+              {displayComparePrice && parseFloat(displayComparePrice) > parseFloat(displayPrice) && (
+                <span className="text-lg text-muted-foreground line-through">{formatPrice(displayComparePrice)}</span>
               )}
             </div>
+            {hasVariants && activeVariant && (
+              <div className="flex items-center gap-2 mt-2">
+                <Tag className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">SKU: {activeVariant.sku}</span>
+                {activeVariant.barcode && <span className="text-xs text-muted-foreground">| Barkod: {activeVariant.barcode}</span>}
+                <span className="text-xs text-muted-foreground">| Stok: {activeVariant.stock}</span>
+              </div>
+            )}
           </div>
 
           {product.flavors && product.flavors.length > 0 && (
@@ -184,7 +213,7 @@ export default function ProductDetailPage() {
             <Button
               className="flex-1 neon-glow py-6 text-base"
               onClick={handleAddToCart}
-              disabled={isAdding || (product.stock !== null && product.stock <= 0)}
+              disabled={isAdding || (displayStock !== null && displayStock !== undefined && displayStock <= 0)}
               data-testid="button-add-to-cart"
             >
               <ShoppingCart className="w-5 h-5 mr-2" />
@@ -214,8 +243,8 @@ export default function ProductDetailPage() {
             ))}
           </div>
 
-          {product.sku && (
-            <p className="text-xs text-muted-foreground mt-4">SKU: {product.sku}</p>
+          {displaySku && (
+            <p className="text-xs text-muted-foreground mt-4">SKU: {displaySku}</p>
           )}
         </div>
       </div>

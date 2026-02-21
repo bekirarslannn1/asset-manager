@@ -287,7 +287,11 @@ export async function registerRoutes(
   });
 
   app.post("/api/consent", async (req, res) => {
-    const record = await storage.createConsentRecord(req.body);
+    const record = await storage.createConsentRecord({
+      ...req.body,
+      ipAddress: req.ip || req.socket.remoteAddress || null,
+      userAgent: req.headers["user-agent"] || req.body.userAgent || null,
+    });
     res.status(201).json(record);
   });
 
