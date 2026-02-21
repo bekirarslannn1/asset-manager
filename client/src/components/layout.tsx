@@ -189,8 +189,6 @@ function Header() {
   const { getSetting } = useSettings();
 
   const { data: categories = [] } = useQuery<Category[]>({ queryKey: ["/api/categories"] });
-  const { data: headerNavLinks = [] } = useQuery<NavigationLink[]>({ queryKey: ["/api/navigation?position=header"] });
-
   const [debouncedQuery, setDebouncedQuery] = useState("");
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
@@ -281,13 +279,6 @@ function Header() {
                 Blog
               </span>
             </Link>
-            {headerNavLinks.map((link) => (
-              <Link key={link.id} href={link.url}>
-                <span className="px-3 py-2 text-sm font-medium hover:text-primary transition-colors rounded-md hover-elevate cursor-pointer" data-testid={`link-dynamic-nav-${link.id}`}>
-                  {link.label}
-                </span>
-              </Link>
-            ))}
           </nav>
 
           <div className="flex items-center gap-2">
@@ -384,14 +375,15 @@ function Header() {
           <Link href="/urunler" onClick={() => setMobileMenuOpen(false)}>
             <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer">Tüm Ürünler</span>
           </Link>
+          <Link href="/markalar" onClick={() => setMobileMenuOpen(false)}>
+            <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer">Markalar</span>
+          </Link>
+          <Link href="/supplement-sihirbazi" onClick={() => setMobileMenuOpen(false)}>
+            <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer text-primary" data-testid="mobile-link-wizard">Supplement Sihirbazı</span>
+          </Link>
           <Link href="/blog" onClick={() => setMobileMenuOpen(false)}>
             <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer" data-testid="mobile-link-blog">Blog</span>
           </Link>
-          {headerNavLinks.map((link) => (
-            <Link key={link.id} href={link.url} onClick={() => setMobileMenuOpen(false)}>
-              <span className="block px-4 py-3 rounded-lg hover:bg-muted text-sm font-medium cursor-pointer" data-testid={`mobile-link-dynamic-nav-${link.id}`}>{link.label}</span>
-            </Link>
-          ))}
           <div className="border-t border-border mt-2 pt-2">
             <MobileAuthLinks onClose={() => setMobileMenuOpen(false)} />
           </div>

@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { seedDatabase } from "./seed";
+import { insertBlogCategorySchema, insertBlogPostSchema } from "@shared/schema";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Iyzipay from "iyzipay";
@@ -1036,15 +1037,16 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/jsonld/organization", async (_req, res) => {
+  app.get("/api/jsonld/organization", async (req, res) => {
     const settings = await storage.getSettings();
     const getSetting = (key: string) => settings.find(s => s.key === key)?.value || "";
+    const siteUrl = getSetting("site_url") || `${req.protocol}://${req.get("host")}`;
     const jsonLd = {
       "@context": "https://schema.org",
       "@type": "Organization",
       name: getSetting("site_name") || "FitSupp",
-      url: getSetting("site_url") || "",
-      logo: getSetting("logo_url") || "",
+      url: siteUrl,
+      logo: getSetting("logo_url") || `${siteUrl}/favicon.ico`,
       description: getSetting("site_description") || "",
       contactPoint: {
         "@type": "ContactPoint",
@@ -1302,77 +1304,85 @@ export async function registerRoutes(
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  app.get("/api/admin/blog/categories", async (_req, res) => {
+  app.get("/api/admin/blog/categories", requirePermission("blog"), async (_req, res) => {
     try {
       const cats = await storage.getAllBlogCategories();
       res.json(cats);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  app.post("/api/admin/blog/categories", async (req, res) => {
+  app.post("/api/admin/blog/categories", requirePermission("blog"), async (req, res) => {
     try {
-      const created = await storage.createBlogCategory(req.body);
+      const parsed = insertBlogCategorySchema.parse(req.body);
+      const created = await storage.createBlogCategory(parsed);
       res.status(201).json(created);
-    } catch (e: any) { res.status(500).json({ error: e.message }); }
+    } catch (e: any) {
+      if (e.name === "ZodError") return res.status(400).json({ error: "Geçersiz veri", details: e.errors });
+      res.status(500).json({ error: e.message });
+    }
   });
 
-  app.put("/api/admin/blog/categories/:id", async (req, res) => {
+  app.put("/api/admin/blog/categories/:id", requirePermission("blog"), async (req, res) => {
     try {
       const updated = await storage.updateBlogCategory(Number(req.params.id), req.body);
       res.json(updated);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  app.delete("/api/admin/blog/categories/:id", async (req, res) => {
+  app.delete("/api/admin/blog/categories/:id", requirePermission("blog"), async (req, res) => {
     try {
       await storage.deleteBlogCategory(Number(req.params.id));
       res.json({ success: true });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  app.get("/api/admin/blog/posts", async (_req, res) => {
+  app.get("/api/admin/blog/posts", requirePermission("blog"), async (_req, res) => {
     try {
       const posts = await storage.getAllBlogPosts();
       res.json(posts);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  app.post("/api/admin/blog/posts", async (req, res) => {
+  app.post("/api/admin/blog/posts", requirePermission("blog"), async (req, res) => {
     try {
-      const created = await storage.createBlogPost(req.body);
+      const parsed = insertBlogPostSchema.parse(req.body);
+      const created = await storage.createBlogPost(parsed);
       res.status(201).json(created);
-    } catch (e: any) { res.status(500).json({ error: e.message }); }
+    } catch (e: any) {
+      if (e.name === "ZodError") return res.status(400).json({ error: "Geçersiz veri", details: e.errors });
+      res.status(500).json({ error: e.message });
+    }
   });
 
-  app.put("/api/admin/blog/posts/:id", async (req, res) => {
+  app.put("/api/admin/blog/posts/:id", requirePermission("blog"), async (req, res) => {
     try {
       const updated = await storage.updateBlogPost(Number(req.params.id), req.body);
       res.json(updated);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  app.delete("/api/admin/blog/posts/:id", async (req, res) => {
+  app.delete("/api/admin/blog/posts/:id", requirePermission("blog"), async (req, res) => {
     try {
       await storage.deleteBlogPost(Number(req.params.id));
       res.json({ success: true });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  app.get("/api/admin/blog/comments", async (_req, res) => {
+  app.get("/api/admin/blog/comments", requirePermission("blog"), async (_req, res) => {
     try {
       const comments = await storage.getAllBlogComments();
       res.json(comments);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  app.put("/api/admin/blog/comments/:id", async (req, res) => {
+  app.put("/api/admin/blog/comments/:id", requirePermission("blog"), async (req, res) => {
     try {
       const updated = await storage.updateBlogComment(Number(req.params.id), req.body);
       res.json(updated);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  app.delete("/api/admin/blog/comments/:id", async (req, res) => {
+  app.delete("/api/admin/blog/comments/:id", requirePermission("blog"), async (req, res) => {
     try {
       await storage.deleteBlogComment(Number(req.params.id));
       res.json({ success: true });

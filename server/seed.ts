@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { categories, brands, products, banners, siteSettings, coupons, pages, users, productVariants, pageLayouts } from "@shared/schema";
+import { categories, brands, products, banners, siteSettings, coupons, pages, users, productVariants, pageLayouts, navigationLinks, bundles, blogCategories, blogPosts } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
@@ -407,6 +407,205 @@ export async function seedDatabase() {
         { type: "newsletter", order: 11, config: { title: "Bülten" } },
       ],
       isActive: true,
+    },
+  ]);
+
+  await db.insert(navigationLinks).values([
+    { label: "Ana Sayfa", url: "/", position: "header", sortOrder: 1 },
+    { label: "Ürünler", url: "/urunler", position: "header", sortOrder: 2 },
+    { label: "Kategoriler", url: "#", position: "header", sortOrder: 3 },
+    { label: "Markalar", url: "/markalar", position: "header", sortOrder: 4 },
+    { label: "Supplement Sihirbazı", url: "/supplement-sihirbazi", position: "header", sortOrder: 5, icon: "sparkles" },
+    { label: "Blog", url: "/blog", position: "header", sortOrder: 6 },
+  ]);
+
+  const allProductsList = await db.select().from(products);
+  const wheyProd = allProductsList.find(p => p.slug === "gold-standard-whey");
+  const creatineProd = allProductsList.find(p => p.slug === "creatine-monohydrate-on");
+  const bcaaProd = allProductsList.find(p => p.slug === "bcaa-411-powder");
+  const preworkoutProd = allProductsList.find(p => p.slug === "c4-original-pre-workout");
+  const gainerProd = allProductsList.find(p => p.slug === "serious-mass-gainer");
+  const lCarnitineProd = allProductsList.find(p => p.slug === "l-carnitine-3000");
+  const omegaProd = allProductsList.find(p => p.slug === "omega-3-fish-oil");
+  const impactWhey = allProductsList.find(p => p.slug === "impact-whey-protein");
+
+  if (wheyProd && creatineProd && bcaaProd && preworkoutProd) {
+    await db.insert(bundles).values([
+      {
+        name: "Kas Kazanım Paketi",
+        slug: "kas-kazanim-paketi",
+        description: "Kas yapımı için ideal kombinasyon. Whey Protein + Kreatin + BCAA ile maksimum kas gelişimi.",
+        image: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600",
+        goalTags: ["kas_kazanimi", "bulk", "muscle_gain", "kas"],
+        items: [
+          { productId: wheyProd.id, quantity: 1 },
+          { productId: creatineProd.id, quantity: 1 },
+          { productId: bcaaProd.id, quantity: 1 },
+        ],
+        discountPercent: 15,
+        price: "1799.00",
+        comparePrice: "2097.00",
+        sortOrder: 1,
+      },
+      {
+        name: "Performans Paketi",
+        slug: "performans-paketi",
+        description: "Antrenman performansınızı zirveye taşıyın. Pre-workout + Kreatin + BCAA kombinasyonu.",
+        image: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=600",
+        goalTags: ["performans", "performance", "guc", "strength"],
+        items: [
+          { productId: preworkoutProd.id, quantity: 1 },
+          { productId: creatineProd.id, quantity: 1 },
+          { productId: bcaaProd.id, quantity: 1 },
+        ],
+        discountPercent: 12,
+        price: "1199.00",
+        comparePrice: "1397.00",
+        sortOrder: 2,
+      },
+      ...(gainerProd && omegaProd ? [{
+        name: "Kilo Alma Paketi",
+        slug: "kilo-alma-paketi",
+        description: "Sağlıklı kilo almak isteyenler için. Mass gainer + Omega 3 + Kreatin ile hacim kazanımı.",
+        image: "https://images.unsplash.com/photo-1532384748853-8f54a8f476e2?w=600",
+        goalTags: ["kilo_alma", "weight_gain", "bulk"],
+        items: [
+          { productId: gainerProd.id, quantity: 1 },
+          { productId: creatineProd.id, quantity: 1 },
+          { productId: omegaProd.id, quantity: 1 },
+        ],
+        discountPercent: 10,
+        price: "1399.00",
+        comparePrice: "1647.00",
+        sortOrder: 3,
+      }] : []),
+      ...(lCarnitineProd && impactWhey ? [{
+        name: "Yağ Yakım Paketi",
+        slug: "yag-yakim-paketi",
+        description: "Yağ yakımını destekleyen ideal kombinasyon. L-Karnitin + Protein + BCAA.",
+        image: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=600",
+        goalTags: ["yag_yakim", "cut", "fat_loss", "diyet", "definasyon"],
+        items: [
+          { productId: lCarnitineProd.id, quantity: 1 },
+          { productId: impactWhey.id, quantity: 1 },
+          { productId: bcaaProd.id, quantity: 1 },
+        ],
+        discountPercent: 12,
+        price: "1299.00",
+        comparePrice: "1497.00",
+        sortOrder: 4,
+      }] : []),
+      ...(omegaProd ? [{
+        name: "Genel Sağlık Paketi",
+        slug: "genel-saglik-paketi",
+        description: "Genel sağlık ve bağışıklık için temel takviyeler. Omega 3 + Protein + Kreatin.",
+        image: "https://images.unsplash.com/photo-1505576399279-565b52d4ac71?w=600",
+        goalTags: ["genel_saglik", "health", "saglik", "wellness"],
+        items: [
+          { productId: omegaProd.id, quantity: 1 },
+          { productId: impactWhey?.id || wheyProd.id, quantity: 1 },
+          { productId: creatineProd.id, quantity: 1 },
+        ],
+        discountPercent: 10,
+        price: "1149.00",
+        comparePrice: "1347.00",
+        sortOrder: 5,
+      }] : []),
+    ]);
+  }
+
+  const insertedBlogCats = await db.insert(blogCategories).values([
+    { name: "Beslenme", slug: "beslenme", description: "Sağlıklı beslenme ve diyet rehberleri", sortOrder: 1 },
+    { name: "Antrenman", slug: "antrenman", description: "Egzersiz programları ve antrenman ipuçları", sortOrder: 2 },
+    { name: "Supplement Rehberi", slug: "supplement-rehberi", description: "Takviye kullanım rehberleri ve karşılaştırmalar", sortOrder: 3 },
+    { name: "Sağlık", slug: "saglik", description: "Genel sağlık ve yaşam kalitesi", sortOrder: 4 },
+  ]).returning();
+
+  const beslenmeC = insertedBlogCats.find(c => c.slug === "beslenme");
+  const antrenmanC = insertedBlogCats.find(c => c.slug === "antrenman");
+  const supplementC = insertedBlogCats.find(c => c.slug === "supplement-rehberi");
+  const saglikC = insertedBlogCats.find(c => c.slug === "saglik");
+
+  await db.insert(blogPosts).values([
+    {
+      title: "Whey Protein Nedir? Kapsamlı Rehber",
+      slug: "whey-protein-nedir-kapsamli-rehber",
+      excerpt: "Whey protein türleri, faydaları, kullanım zamanı ve doğru seçim rehberi. Konsantre, izolat ve hidrolizat arasındaki farklar.",
+      content: `<h2>Whey Protein Nedir?</h2><p>Whey protein, sütten peynir üretimi sırasında elde edilen bir yan üründür. Yüksek biyolojik değere sahip olan whey protein, tüm esansiyel amino asitleri içerir ve vücut tarafından hızla emilir.</p><h3>Whey Protein Türleri</h3><h4>1. Whey Protein Konsantre (WPC)</h4><p>En yaygın ve ekonomik whey protein türüdür. Protein oranı %70-80 arasındadır. Laktoz ve yağ içerebilir ancak biyoaktif bileşenler korunur.</p><h4>2. Whey Protein İzolat (WPI)</h4><p>Ekstra filtrasyon sürecinden geçirilmiş, %90+ protein içeren saf formüldür. Laktoz ve yağ oranı minimumda tutulur. Laktoz hassasiyeti olanlar için idealdir.</p><h4>3. Whey Protein Hidrolizat (WPH)</h4><p>Enzimatik olarak ön-sindirime uğratılmış, en hızlı emilen whey protein türüdür. Genellikle medikal ve sporcu odaklı ürünlerde kullanılır.</p><h3>Ne Zaman Kullanmalı?</h3><p>En etkili kullanım zamanları:</p><ul><li>Antrenman sonrası 30 dakika içinde (anabolik pencere)</li><li>Sabah kahvaltıda protein takviyesi olarak</li><li>Öğün aralarında atıştırmalık yerine</li></ul><h3>Günlük Doz</h3><p>Genel öneri: Kilogram başına 1.6-2.2g protein alımı hedeflenmeli. Örneğin 80kg bir birey günde 128-176g protein almalıdır. Whey protein ile günde 1-3 ölçek kaşığı (25-75g protein) tüketilebilir.</p>`,
+      coverImage: "https://images.unsplash.com/photo-1593095948071-474c5cc2c755?w=800",
+      categoryId: supplementC?.id || null,
+      authorId: null,
+      authorName: "FitSupp Uzman Ekibi",
+      authorAvatar: null,
+      tags: ["whey-protein", "protein", "supplement", "kas-yapimi"],
+      readingTime: 5,
+      isPublished: true,
+      isFeatured: true,
+      publishedAt: new Date(),
+    },
+    {
+      title: "Yeni Başlayanlar İçin Fitness Programı",
+      slug: "yeni-baslayanlar-icin-fitness-programi",
+      excerpt: "Spor salonuna ilk adımınızı atıyorsanız bu 8 haftalık program tam size göre. Temel hareketler ve progresyon rehberi.",
+      content: `<h2>Yeni Başlayanlar İçin 8 Haftalık Program</h2><p>Fitness yolculuğunuza doğru bir başlangıç yapmak, uzun vadeli başarı için kritik öneme sahiptir. Bu program, temel bileşik hareketlere odaklanarak vücudunuzu sistematik olarak geliştirecektir.</p><h3>Hafta 1-4: Temel Oluşturma</h3><h4>A Günü (Pazartesi/Perşembe)</h4><ul><li>Squat: 3x10</li><li>Bench Press: 3x10</li><li>Barbell Row: 3x10</li><li>Overhead Press: 3x8</li><li>Plank: 3x30sn</li></ul><h4>B Günü (Salı/Cuma)</h4><ul><li>Deadlift: 3x8</li><li>Dumbbell Press: 3x10</li><li>Lat Pulldown: 3x10</li><li>Leg Press: 3x12</li><li>Bicycle Crunch: 3x15</li></ul><h3>Hafta 5-8: Yoğunluk Artışı</h3><p>Aynı hareketleri 4x set olarak uygulayın. Ağırlıkları %10-15 artırın. Her antrenmanda en az bir tekrar veya 2.5kg artış hedefleyin.</p><h3>Beslenme Önerileri</h3><p>Protein alımınız kilogram başına en az 1.6g olmalıdır. Antrenman sonrası 30 dakika içinde whey protein tüketin. Günde en az 3 litre su için.</p>`,
+      coverImage: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800",
+      categoryId: antrenmanC?.id || null,
+      authorId: null,
+      authorName: "FitSupp Uzman Ekibi",
+      authorAvatar: null,
+      tags: ["fitness", "antrenman", "yeni-baslayan", "program"],
+      readingTime: 6,
+      isPublished: true,
+      isFeatured: true,
+      publishedAt: new Date(),
+    },
+    {
+      title: "Kas Yapımı İçin En İyi 10 Besin",
+      slug: "kas-yapimi-icin-en-iyi-10-besin",
+      excerpt: "Kas gelişiminizi hızlandıracak en etkili besinler ve her birinin kas yapımına katkıları.",
+      content: `<h2>Kas Yapımı İçin Beslenme</h2><p>Doğru beslenme, kas yapımının temel taşıdır. İşte kas gelişiminizi destekleyecek en etkili 10 besin:</p><h3>1. Yumurta</h3><p>Biyolojik değeri en yüksek protein kaynağı. Bir yumurta yaklaşık 6g yüksek kaliteli protein içerir. Lösin amino asidi bakımından zengindir.</p><h3>2. Tavuk Göğsü</h3><p>100g pişmiş tavuk göğsünde yaklaşık 31g protein bulunur. Düşük yağlı, yüksek proteinli yapısıyla en popüler kas yapım besinidir.</p><h3>3. Somon</h3><p>Hem yüksek kaliteli protein hem de omega-3 yağ asitleri içerir. Kas inflamasyonunu azaltarak toparlanmayı hızlandırır.</p><h3>4. Yulaf</h3><p>Kompleks karbonhidrat kaynağı. Antrenman öncesi enerji sağlar ve kas glikojen depolarını doldurur.</p><h3>5. Süzme Peynir (Quark)</h3><p>Kazein proteini bakımından zengin. Yavaş emilen yapısıyla gece boyunca kas onarımını destekler.</p><h3>6. Kırmızı Et</h3><p>Demir, çinko, B12 vitamini ve kreatin doğal kaynağıdır. Haftada 2-3 porsiyon önerilir.</p><h3>7. Badem</h3><p>Sağlıklı yağlar, E vitamini ve magnezyum içerir. Kalori yoğunluğu kilo almak isteyenler için avantajdır.</p><h3>8. Brokoli</h3><p>Antioksidanlar ve C vitamini bakımından zengin. Kortizol seviyesini dengelemeye yardımcı olur.</p><h3>9. Tatlı Patates</h3><p>Kompleks karbonhidrat ve beta-karoten kaynağı. Antrenman sonrası glikojen yenileme için idealdir.</p><h3>10. Lor Peyniri</h3><p>Düşük kalorili, yüksek proteinli Türk mutfağının süper besini. 100g'da yaklaşık 12g protein bulunur.</p>`,
+      coverImage: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800",
+      categoryId: beslenmeC?.id || null,
+      authorId: null,
+      authorName: "FitSupp Uzman Ekibi",
+      authorAvatar: null,
+      tags: ["beslenme", "kas-yapimi", "protein", "diyet"],
+      readingTime: 4,
+      isPublished: true,
+      isFeatured: false,
+      publishedAt: new Date(),
+    },
+    {
+      title: "Kreatin Kullanım Rehberi: Yükleme Gerekli mi?",
+      slug: "kreatin-kullanim-rehberi",
+      excerpt: "Kreatin monohidrat nedir, nasıl kullanılır, yükleme fazı gerekli midir? Bilimsel verilerle kreatin rehberi.",
+      content: `<h2>Kreatin: Bilimsel Rehber</h2><p>Kreatin, spor takviyesi dünyasında en çok araştırılmış ve etkinliği kanıtlanmış supplement'tir. ISSN (International Society of Sports Nutrition) tarafından güvenli ve etkili olarak sınıflandırılmıştır.</p><h3>Kreatin Ne İşe Yarar?</h3><p>Kreatin, kaslarınızdaki ATP (adenozin trifosfat) üretimini artırarak:</p><ul><li>Kısa süreli yüksek yoğunluklu egzersiz performansını artırır</li><li>Kas kuvvetini ve gücünü destekler</li><li>Kas hacmini artırır (hücre içi su tutulumu)</li><li>Toparlanmayı hızlandırır</li></ul><h3>Yükleme Fazı Gerekli mi?</h3><p>Kısa cevap: Hayır, zorunlu değil.</p><p><strong>Yükleme protokolü:</strong> 7 gün boyunca günde 20g (4x5g), ardından günde 3-5g idame dozu. Kreatin depolarını 5-7 günde doldurur.</p><p><strong>Yüklemesiz protokol:</strong> Günde 3-5g sürekli kullanım. Kreatin depolarını 3-4 haftada doldurur. Sindirim problemleri daha azdır.</p><h3>Ne Zaman Alınmalı?</h3><p>Kreatin zamanlama bağımsızdır. Günün herhangi bir saatinde alabilirsiniz. Ancak araştırmalar antrenman sonrası alımın marjinal olarak daha etkili olabileceğini göstermektedir.</p><h3>Yan Etkileri</h3><p>Kreatin genel olarak güvenlidir. En yaygın yan etki ilk haftalarda görülen su tutulumudur (1-3kg). Yeterli su tüketimi (günde 3+ litre) önerilir.</p>`,
+      coverImage: "https://images.unsplash.com/photo-1594381898411-846e7d193883?w=800",
+      categoryId: supplementC?.id || null,
+      authorId: null,
+      authorName: "FitSupp Uzman Ekibi",
+      authorAvatar: null,
+      tags: ["kreatin", "supplement", "performans", "rehber"],
+      readingTime: 5,
+      isPublished: true,
+      isFeatured: false,
+      publishedAt: new Date(),
+    },
+    {
+      title: "Antrenman Sonrası Toparlanma Stratejileri",
+      slug: "antrenman-sonrasi-toparlanma",
+      excerpt: "Kas gelişiminin %70'i toparlanma döneminde gerçekleşir. En etkili recovery stratejileri ve beslenme önerileri.",
+      content: `<h2>Toparlanma Neden Bu Kadar Önemli?</h2><p>Antrenman sırasında kaslarınız mikro hasarlar alır. Asıl kas yapımı, bu hasarların onarıldığı toparlanma döneminde gerçekleşir. Yetersiz toparlanma, overtraining sendromuna ve sakatlanmalara yol açabilir.</p><h3>1. Beslenme Stratejisi</h3><p><strong>Antrenman sonrası ilk 30 dakika:</strong> 20-40g whey protein + 40-60g hızlı emilen karbonhidrat (muz, pirinç keki gibi). Bu anabolik pencereyi en verimli şekilde değerlendirmenizi sağlar.</p><h3>2. Uyku</h3><p>Kas onarımı büyük ölçüde uyku sırasında gerçekleşir. Growth hormone (büyüme hormonu) salınımı derin uyku fazında zirve yapar. Hedef: Günde 7-9 saat kaliteli uyku.</p><h3>3. Aktif Toparlanma</h3><p>Tam dinlenme günlerinde hafif kardiyo (yürüyüş, yüzme) veya esneme yapın. Bu, kan dolaşımını artırarak besin taşınımını hızlandırır.</p><h3>4. Supplement Desteği</h3><ul><li><strong>BCAA:</strong> Kas protein sentezini uyarır, kas yıkımını azaltır</li><li><strong>Glutamin:</strong> Bağışıklık sistemini destekler, kas toparlanmasını hızlandırır</li><li><strong>Omega-3:</strong> Anti-inflamatuar etki ile kas ağrılarını azaltır</li><li><strong>Magnezyum:</strong> Kas kramplarını önler, uyku kalitesini artırır</li></ul><h3>5. Hidrasyon</h3><p>Antrenman sırasında kaybedilen sıvıyı yerine koyun. Genel kural: Kilogram başına 35-40ml su tüketin. Antrenman sonrası ek olarak 500ml-1 litre su için.</p>`,
+      coverImage: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800",
+      categoryId: saglikC?.id || null,
+      authorId: null,
+      authorName: "FitSupp Uzman Ekibi",
+      authorAvatar: null,
+      tags: ["toparlanma", "recovery", "antrenman", "saglik"],
+      readingTime: 5,
+      isPublished: true,
+      isFeatured: true,
+      publishedAt: new Date(),
     },
   ]);
 
