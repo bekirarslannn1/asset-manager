@@ -4,7 +4,9 @@
 A professional, enterprise-grade protein and supplement e-commerce platform for the Turkish market with a dark theme (#0a0a0a, #1a1a1a) and neon green accents (#39FF14). All content is 100% dynamic and manageable through admin panel. Features JWT auth, RBAC, audit logging, KVKK compliance, dynamic theme engine, and SDUI page builder.
 
 ## Recent Changes
-- 2026-02-21: Enterprise expansion - Added product variants/SKU system, RBAC with 5 role types, JWT authentication, audit logging, KVKK consent module, dynamic theme engine, KPI analytics dashboard, SDUI page builder, cookie consent banner
+- 2026-02-21: Payment integration - iyzico payment gateway with server-side price validation, checkout page with Turkish address form, card payment, KVKK/terms acceptance
+- 2026-02-21: Security hardening - JWT requires SESSION_SECRET (no fallback), admin routes auth-gated (backend + frontend login gate), auth headers in all API calls
+- 2026-02-21: Enterprise expansion - Product variants/SKU, RBAC with 5 roles, JWT auth, audit logging, KVKK consent, dynamic theme engine, KPI dashboard, SDUI page builder, cookie consent
 - 2026-02-21: Initial build - complete e-commerce platform with dark theme, product catalog, cart, admin panel
 
 ## User Preferences
@@ -38,14 +40,17 @@ A professional, enterprise-grade protein and supplement e-commerce platform for 
 ### Key Files
 - `shared/schema.ts` - Database schema and types (17 tables)
 - `server/storage.ts` - Data access layer with 40+ methods
-- `server/routes.ts` - API endpoints with auth middleware, audit logging
+- `server/routes.ts` - API endpoints with auth middleware, audit logging, iyzico payment
 - `server/seed.ts` - Initial seed data with admin user, variants, layouts
+- `server/iyzipay.d.ts` - TypeScript declarations for iyzipay SDK
 - `client/src/components/layout.tsx` - Header, footer, WhatsApp button
 - `client/src/components/cookie-consent.tsx` - KVKK cookie consent banner
 - `client/src/components/theme-engine.tsx` - Dynamic CSS variable application
-- `client/src/pages/admin.tsx` - Enterprise admin panel (12 tabs)
+- `client/src/pages/admin.tsx` - Enterprise admin panel (12 tabs) with login gate
+- `client/src/pages/checkout.tsx` - 2-step checkout with iyzico payment
 - `client/src/pages/product-detail.tsx` - Product detail with variant pricing
 - `client/src/pages/home.tsx` - Home page with hero slider, product sections
+- `client/src/lib/queryClient.ts` - API client with auth token injection
 
 ### Admin Panel Tabs
 1. KPI Dashboard (Recharts analytics)
@@ -61,13 +66,20 @@ A professional, enterprise-grade protein and supplement e-commerce platform for 
 11. Pages editor
 12. Site settings
 
+### Payment Integration
+- iyzico (sandbox by default, configurable via IYZICO_API_KEY, IYZICO_SECRET_KEY, IYZICO_URI env vars)
+- Server-side price validation (prices computed from DB, not trusted from client)
+- 2-step checkout: address form -> card payment with KVKK/terms acceptance
+- Order created only on successful iyzico payment response
+
 ### URL Structure
 - `/` - Home page
 - `/urunler` - All products
 - `/urun/:slug` - Product detail
 - `/kategori/:slug` - Category page
 - `/sepet` - Cart
+- `/odeme` - Checkout/payment
 - `/favoriler` - Favorites
 - `/markalar` - Brands
 - `/sayfa/:slug` - Static pages
-- `/admin` - Admin panel
+- `/admin` - Admin panel (login required)

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,7 +13,7 @@ import { formatPrice } from "@/lib/utils";
 import {
   Package, Tag, Layers, Image, Settings, FileText, ShoppingCart, BarChart3,
   Plus, Trash2, Edit, Save, X, Users, Boxes, ScrollText, Palette, LayoutGrid,
-  Shield, Download, Eye,
+  Shield, Download, Eye, Lock, LogOut, Loader2,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -1037,46 +1038,181 @@ function SettingsTab() {
   );
 }
 
+function AdminLoginGate({ children }: { children: React.ReactNode }) {
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem("admin_token"));
+  const [adminUser, setAdminUser] = useState<any>(null);
+  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (token) {
+      fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => {
+          if (!r.ok) throw new Error();
+          return r.json();
+        })
+        .then((user) => {
+          const allowed = ["super_admin", "admin", "seller", "support", "logistics"];
+          if (!allowed.includes(user.role)) {
+            localStorage.removeItem("admin_token");
+            setToken(null);
+            setAdminUser(null);
+          } else {
+            setAdminUser(user);
+          }
+          setChecking(false);
+        })
+        .catch(() => {
+          localStorage.removeItem("admin_token");
+          setToken(null);
+          setChecking(false);
+        });
+    } else {
+      setChecking(false);
+    }
+  }, [token]);
+
+  const handleLogin = async () => {
+    if (!loginForm.username || !loginForm.password) return;
+    setLoginLoading(true);
+    try {
+      const res = await apiRequest("POST", "/api/auth/login", loginForm);
+      const data = await res.json();
+      const allowed = ["super_admin", "admin", "seller", "support", "logistics"];
+      if (!allowed.includes(data.user.role)) {
+        toast({ title: "Erişim reddedildi", description: "Admin paneline erişim yetkiniz yok.", variant: "destructive" });
+        setLoginLoading(false);
+        return;
+      }
+      localStorage.setItem("admin_token", data.token);
+      setToken(data.token);
+      setAdminUser(data.user);
+      toast({ title: "Giriş başarılı", description: `Hoş geldiniz, ${data.user.fullName}` });
+    } catch {
+      toast({ title: "Giriş başarısız", description: "Kullanıcı adı veya şifre hatalı.", variant: "destructive" });
+    }
+    setLoginLoading(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("admin_token");
+    setToken(null);
+    setAdminUser(null);
+  };
+
+  if (checking) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!token || !adminUser) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-16" data-testid="admin-login">
+        <Card>
+          <CardHeader className="text-center">
+            <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8 text-primary" />
+            </div>
+            <CardTitle className="text-xl">Yönetim Paneli Girişi</CardTitle>
+            <p className="text-sm text-muted-foreground">Devam etmek için giriş yapın</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="admin-username">Kullanıcı Adı</Label>
+              <Input
+                id="admin-username"
+                value={loginForm.username}
+                onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                placeholder="admin"
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                data-testid="input-admin-username"
+              />
+            </div>
+            <div>
+              <Label htmlFor="admin-password">Şifre</Label>
+              <Input
+                id="admin-password"
+                type="password"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                placeholder="••••••••"
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                data-testid="input-admin-password"
+              />
+            </div>
+            <Button className="w-full neon-glow" onClick={handleLogin} disabled={loginLoading} data-testid="button-admin-login">
+              {loginLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Lock className="w-4 h-4 mr-2" />}
+              Giriş Yap
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4 px-4 pt-4 max-w-7xl mx-auto">
+        <div className="flex items-center gap-2">
+          <Badge className={ROLE_COLORS[adminUser.role] || ""}>{adminUser.role}</Badge>
+          <span className="text-sm text-muted-foreground">{adminUser.fullName}</span>
+        </div>
+        <Button variant="ghost" size="sm" onClick={handleLogout} data-testid="button-admin-logout">
+          <LogOut className="w-4 h-4 mr-2" /> Çıkış
+        </Button>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8" data-testid="admin-page">
-      <div className="flex items-center gap-3 mb-8 flex-wrap">
-        <BarChart3 className="w-8 h-8 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold font-heading">Yönetim Paneli</h1>
-          <p className="text-sm text-muted-foreground">Tüm içerik, kullanıcı ve site ayarlarını yönetin</p>
+    <AdminLoginGate>
+      <div className="max-w-7xl mx-auto px-4 py-8" data-testid="admin-page">
+        <div className="flex items-center gap-3 mb-8 flex-wrap">
+          <BarChart3 className="w-8 h-8 text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold font-heading">Yönetim Paneli</h1>
+            <p className="text-sm text-muted-foreground">Tüm içerik, kullanıcı ve site ayarlarını yönetin</p>
+          </div>
         </div>
+
+        <Tabs defaultValue="dashboard" data-testid="admin-tabs">
+          <TabsList className="bg-card border border-border mb-6 flex-wrap h-auto gap-1 p-1">
+            <TabsTrigger value="dashboard" className="gap-1.5" data-testid="tab-dashboard"><BarChart3 className="w-3.5 h-3.5" /> Panel</TabsTrigger>
+            <TabsTrigger value="products" className="gap-1.5" data-testid="tab-products"><Package className="w-3.5 h-3.5" /> Ürünler</TabsTrigger>
+            <TabsTrigger value="categories" className="gap-1.5" data-testid="tab-categories"><Layers className="w-3.5 h-3.5" /> Kategoriler</TabsTrigger>
+            <TabsTrigger value="banners" className="gap-1.5" data-testid="tab-banners"><Image className="w-3.5 h-3.5" /> Bannerlar</TabsTrigger>
+            <TabsTrigger value="users" className="gap-1.5" data-testid="tab-users"><Users className="w-3.5 h-3.5" /> Kullanıcılar</TabsTrigger>
+            <TabsTrigger value="variants" className="gap-1.5" data-testid="tab-variants"><Boxes className="w-3.5 h-3.5" /> Varyantlar</TabsTrigger>
+            <TabsTrigger value="audit" className="gap-1.5" data-testid="tab-audit"><ScrollText className="w-3.5 h-3.5" /> Denetim</TabsTrigger>
+            <TabsTrigger value="theme" className="gap-1.5" data-testid="tab-theme"><Palette className="w-3.5 h-3.5" /> Tema</TabsTrigger>
+            <TabsTrigger value="sdui" className="gap-1.5" data-testid="tab-sdui"><LayoutGrid className="w-3.5 h-3.5" /> SDUI</TabsTrigger>
+            <TabsTrigger value="kvkk" className="gap-1.5" data-testid="tab-kvkk"><Shield className="w-3.5 h-3.5" /> KVKK</TabsTrigger>
+            <TabsTrigger value="pages" className="gap-1.5" data-testid="tab-pages"><FileText className="w-3.5 h-3.5" /> Sayfalar</TabsTrigger>
+            <TabsTrigger value="settings" className="gap-1.5" data-testid="tab-settings"><Settings className="w-3.5 h-3.5" /> Ayarlar</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard"><DashboardTab /></TabsContent>
+          <TabsContent value="products"><ProductsTab /></TabsContent>
+          <TabsContent value="categories"><CategoriesTab /></TabsContent>
+          <TabsContent value="banners"><BannersTab /></TabsContent>
+          <TabsContent value="users"><UsersTab /></TabsContent>
+          <TabsContent value="variants"><VariantsTab /></TabsContent>
+          <TabsContent value="audit"><AuditLogsTab /></TabsContent>
+          <TabsContent value="theme"><ThemeEngineTab /></TabsContent>
+          <TabsContent value="sdui"><SDUIPageBuilderTab /></TabsContent>
+          <TabsContent value="kvkk"><KVKKTab /></TabsContent>
+          <TabsContent value="pages"><PagesTab /></TabsContent>
+          <TabsContent value="settings"><SettingsTab /></TabsContent>
+        </Tabs>
       </div>
-
-      <Tabs defaultValue="dashboard" data-testid="admin-tabs">
-        <TabsList className="bg-card border border-border mb-6 flex-wrap h-auto gap-1 p-1">
-          <TabsTrigger value="dashboard" className="gap-1.5" data-testid="tab-dashboard"><BarChart3 className="w-3.5 h-3.5" /> Panel</TabsTrigger>
-          <TabsTrigger value="products" className="gap-1.5" data-testid="tab-products"><Package className="w-3.5 h-3.5" /> Ürünler</TabsTrigger>
-          <TabsTrigger value="categories" className="gap-1.5" data-testid="tab-categories"><Layers className="w-3.5 h-3.5" /> Kategoriler</TabsTrigger>
-          <TabsTrigger value="banners" className="gap-1.5" data-testid="tab-banners"><Image className="w-3.5 h-3.5" /> Bannerlar</TabsTrigger>
-          <TabsTrigger value="users" className="gap-1.5" data-testid="tab-users"><Users className="w-3.5 h-3.5" /> Kullanıcılar</TabsTrigger>
-          <TabsTrigger value="variants" className="gap-1.5" data-testid="tab-variants"><Boxes className="w-3.5 h-3.5" /> Varyantlar</TabsTrigger>
-          <TabsTrigger value="audit" className="gap-1.5" data-testid="tab-audit"><ScrollText className="w-3.5 h-3.5" /> Denetim</TabsTrigger>
-          <TabsTrigger value="theme" className="gap-1.5" data-testid="tab-theme"><Palette className="w-3.5 h-3.5" /> Tema</TabsTrigger>
-          <TabsTrigger value="sdui" className="gap-1.5" data-testid="tab-sdui"><LayoutGrid className="w-3.5 h-3.5" /> SDUI</TabsTrigger>
-          <TabsTrigger value="kvkk" className="gap-1.5" data-testid="tab-kvkk"><Shield className="w-3.5 h-3.5" /> KVKK</TabsTrigger>
-          <TabsTrigger value="pages" className="gap-1.5" data-testid="tab-pages"><FileText className="w-3.5 h-3.5" /> Sayfalar</TabsTrigger>
-          <TabsTrigger value="settings" className="gap-1.5" data-testid="tab-settings"><Settings className="w-3.5 h-3.5" /> Ayarlar</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="dashboard"><DashboardTab /></TabsContent>
-        <TabsContent value="products"><ProductsTab /></TabsContent>
-        <TabsContent value="categories"><CategoriesTab /></TabsContent>
-        <TabsContent value="banners"><BannersTab /></TabsContent>
-        <TabsContent value="users"><UsersTab /></TabsContent>
-        <TabsContent value="variants"><VariantsTab /></TabsContent>
-        <TabsContent value="audit"><AuditLogsTab /></TabsContent>
-        <TabsContent value="theme"><ThemeEngineTab /></TabsContent>
-        <TabsContent value="sdui"><SDUIPageBuilderTab /></TabsContent>
-        <TabsContent value="kvkk"><KVKKTab /></TabsContent>
-        <TabsContent value="pages"><PagesTab /></TabsContent>
-        <TabsContent value="settings"><SettingsTab /></TabsContent>
-      </Tabs>
-    </div>
+    </AdminLoginGate>
   );
 }

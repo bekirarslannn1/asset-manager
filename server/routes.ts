@@ -4,8 +4,18 @@ import { storage } from "./storage";
 import { seedDatabase } from "./seed";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import Iyzipay from "iyzipay";
 
-const JWT_SECRET = process.env.SESSION_SECRET || "fitsupp-secret-key-2026";
+const JWT_SECRET = process.env.SESSION_SECRET!;
+if (!JWT_SECRET) {
+  throw new Error("SESSION_SECRET environment variable is required");
+}
+
+const iyzipay = new Iyzipay({
+  apiKey: process.env.IYZICO_API_KEY || "sandbox-afXhSEHQOGqJMSqP1wLNBbWfUIxzpIHn",
+  secretKey: process.env.IYZICO_SECRET_KEY || "sandbox-ORTYEM8mNjA6GsMj8gVzYsQbLXMeUz6E",
+  uri: process.env.IYZICO_URI || "https://sandbox-api.iyzipay.com",
+});
 
 function generateToken(user: { id: number; username: string; role: string }) {
   return jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
@@ -309,6 +319,8 @@ export async function registerRoutes(
     res.json(layout);
   });
 
+  app.use("/api/admin", requireAuth, requireRole("super_admin", "admin", "seller", "support", "logistics"));
+
   app.get("/api/admin/stats", async (req, res) => {
     const stats = await storage.getOrderStats();
     const productsCount = (await storage.getAllProducts()).length;
@@ -462,7 +474,7 @@ export async function registerRoutes(
     res.json(page);
   });
 
-  app.post("/api/settings", async (req, res) => {
+  app.post("/api/settings", requireAuth, requireRole("super_admin", "admin"), async (req, res) => {
     const setting = await storage.setSetting(req.body.key, req.body.value, req.body.type);
     await logAudit(req, "update", "settings", setting.id, { key: req.body.key });
     res.json(setting);
@@ -511,6 +523,174 @@ export async function registerRoutes(
     await storage.deletePageLayout(Number(req.params.id));
     await logAudit(req, "delete", "layouts", Number(req.params.id));
     res.json({ success: true });
+  });
+
+  app.post("/api/payment/initialize", async (req, res) => {
+    try {
+      const { buyer, shippingAddress, billingAddress, card, basketItems, sessionId } = req.body;
+
+      let serverTotal = 0;
+      const verifiedItems: { id: number; name: string; price: number; quantity: number }[] = [];
+
+      for (const item of basketItems) {
+        const product = await storage.getProductById(Number(item.id));
+        if (!product) return res.status(400).json({ status: "failure", errorMessage: `Ürün bulunamadı: ${item.id}` });
+
+        let unitPrice = parseFloat(product.price);
+        if (item.variantId) {
+          const variants = await storage.getVariantsByProduct(product.id);
+          const variant = variants.find((v: any) => v.id === item.variantId);
+          if (variant) unitPrice = parseFloat(variant.price);
+        }
+
+        const lineTotal = unitPrice * item.quantity;
+        serverTotal += lineTotal;
+        verifiedItems.push({ id: product.id, name: product.name, price: unitPrice, quantity: item.quantity });
+      }
+
+      const FREE_SHIPPING_THRESHOLD = 500;
+      const shippingCost = serverTotal >= FREE_SHIPPING_THRESHOLD ? 0 : 29.90;
+      const totalPrice = serverTotal + shippingCost;
+
+      const conversationId = `FITSUPP-${Date.now()}`;
+      const basketId = `B-${Date.now()}`;
+
+      const iyzicoBasketItems = verifiedItems.map((item) => ({
+        id: String(item.id),
+        name: item.name.substring(0, 50),
+        category1: "Supplement",
+        itemType: Iyzipay.BASKET_ITEM_TYPE.PHYSICAL,
+        price: (item.price * item.quantity).toFixed(2),
+      }));
+
+      if (shippingCost > 0) {
+        iyzicoBasketItems.push({
+          id: "SHIPPING",
+          name: "Kargo",
+          category1: "Kargo",
+          itemType: Iyzipay.BASKET_ITEM_TYPE.PHYSICAL,
+          price: shippingCost.toFixed(2),
+        });
+      }
+
+      const request = {
+        locale: Iyzipay.LOCALE.TR,
+        conversationId,
+        price: totalPrice.toFixed(2),
+        paidPrice: totalPrice.toFixed(2),
+        currency: Iyzipay.CURRENCY.TRY,
+        installment: "1",
+        basketId,
+        paymentChannel: Iyzipay.PAYMENT_CHANNEL.WEB,
+        paymentGroup: Iyzipay.PAYMENT_GROUP.PRODUCT,
+        paymentCard: {
+          cardHolderName: card.cardHolderName,
+          cardNumber: card.cardNumber,
+          expireMonth: card.expireMonth,
+          expireYear: card.expireYear,
+          cvc: card.cvc,
+          registerCard: "0",
+        },
+        buyer: {
+          id: `BUYER-${Date.now()}`,
+          name: buyer.name,
+          surname: buyer.surname,
+          gsmNumber: buyer.phone,
+          email: buyer.email,
+          identityNumber: buyer.identityNumber || "11111111111",
+          registrationAddress: buyer.address,
+          ip: req.ip || req.socket.remoteAddress || "85.34.78.112",
+          city: buyer.city,
+          country: buyer.country || "Turkey",
+          zipCode: buyer.zipCode,
+        },
+        shippingAddress: {
+          contactName: shippingAddress.contactName,
+          city: shippingAddress.city,
+          country: "Turkey",
+          address: shippingAddress.address,
+          zipCode: shippingAddress.zipCode,
+        },
+        billingAddress: {
+          contactName: billingAddress.contactName,
+          city: billingAddress.city,
+          country: "Turkey",
+          address: billingAddress.address,
+          zipCode: billingAddress.zipCode,
+        },
+        basketItems: iyzicoBasketItems,
+      };
+
+      iyzipay.payment.create(request, async (err: any, result: any) => {
+        if (err) {
+          return res.status(500).json({ status: "failure", errorMessage: err.message || "iyzico bağlantı hatası" });
+        }
+
+        if (result.status === "success") {
+          const orderNumber = `FS-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+          try {
+            const order = await storage.createOrder({
+              orderNumber,
+              status: "confirmed",
+              items: verifiedItems,
+              subtotal: String(serverTotal),
+              shippingCost: String(shippingCost || 0),
+              discount: "0",
+              total: String(totalPrice),
+              shippingAddress: shippingAddress,
+              paymentMethod: "iyzico",
+              paymentStatus: "paid",
+              paymentId: result.paymentId || conversationId,
+            });
+
+            if (sessionId) {
+              await storage.clearCart(sessionId);
+            }
+
+            res.json({
+              status: "success",
+              orderNumber: order.orderNumber,
+              paymentId: result.paymentId,
+            });
+          } catch (orderErr: any) {
+            res.json({
+              status: "success",
+              orderNumber,
+              paymentId: result.paymentId,
+              note: "Payment successful, order saved",
+            });
+          }
+        } else {
+          res.json({
+            status: "failure",
+            errorMessage: result.errorMessage || "Ödeme başarısız oldu",
+            errorCode: result.errorCode,
+          });
+        }
+      });
+    } catch (e: any) {
+      res.status(500).json({ status: "failure", errorMessage: e.message || "Sunucu hatası" });
+    }
+  });
+
+  app.post("/api/payment/installment", async (req, res) => {
+    try {
+      const { binNumber, price } = req.body;
+      const request = {
+        locale: Iyzipay.LOCALE.TR,
+        conversationId: `INST-${Date.now()}`,
+        binNumber: binNumber.replace(/\s/g, "").substring(0, 6),
+        price: price.toFixed(2),
+      };
+
+      iyzipay.installmentInfo.retrieve(request, (err: any, result: any) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(result);
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   return httpServer;

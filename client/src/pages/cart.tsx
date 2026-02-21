@@ -196,9 +196,11 @@ export default function CartPage() {
               </div>
             </div>
 
-            <Button className="w-full mt-6 neon-glow py-6 text-base" data-testid="button-checkout">
-              Siparişi Tamamla <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
+            <Link href="/odeme">
+              <Button className="w-full mt-6 neon-glow py-6 text-base" data-testid="button-checkout">
+                Siparişi Tamamla <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
