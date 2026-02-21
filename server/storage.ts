@@ -23,7 +23,8 @@ import {
   type BlogCategory, type InsertBlogCategory,
   type BlogPost, type InsertBlogPost,
   type BlogComment, type InsertBlogComment,
-  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, bundles, testimonials, paymentMethods, blogCategories, blogPosts, blogComments,
+  type Campaign, type InsertCampaign,
+  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, bundles, testimonials, paymentMethods, blogCategories, blogPosts, blogComments, campaigns,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, ilike, desc, asc, gte, lte, sql, count, sum } from "drizzle-orm";
@@ -667,6 +668,33 @@ export class DatabaseStorage {
     }).where(eq(users.id, userId));
     await db.delete(favorites).where(eq(favorites.sessionId, String(userId)));
     await db.delete(consentRecords).where(eq(consentRecords.userId, userId));
+  }
+  async deletePage(id: number): Promise<void> {
+    await db.delete(pages).where(eq(pages.id, id));
+  }
+
+  async getCampaigns(): Promise<Campaign[]> {
+    return db.select().from(campaigns).orderBy(asc(campaigns.sortOrder));
+  }
+  async getActiveCampaigns(): Promise<Campaign[]> {
+    const now = new Date();
+    const all = await db.select().from(campaigns).where(eq(campaigns.isActive, true)).orderBy(asc(campaigns.sortOrder));
+    return all.filter(c => {
+      if (c.startDate && new Date(c.startDate) > now) return false;
+      if (c.endDate && new Date(c.endDate) < now) return false;
+      return true;
+    });
+  }
+  async createCampaign(data: InsertCampaign): Promise<Campaign> {
+    const [created] = await db.insert(campaigns).values(data).returning();
+    return created;
+  }
+  async updateCampaign(id: number, data: Partial<InsertCampaign>): Promise<Campaign | undefined> {
+    const [updated] = await db.update(campaigns).set(data).where(eq(campaigns.id, id)).returning();
+    return updated;
+  }
+  async deleteCampaign(id: number): Promise<void> {
+    await db.delete(campaigns).where(eq(campaigns.id, id));
   }
 }
 

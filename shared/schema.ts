@@ -261,6 +261,24 @@ export const testimonials = pgTable("testimonials", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+export const campaigns = pgTable("campaigns", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  description: text("description"),
+  image: text("image"),
+  discountType: text("discount_type").default("percentage"),
+  discountValue: decimal("discount_value", { precision: 10, scale: 2 }),
+  minOrderAmount: decimal("min_order_amount", { precision: 10, scale: 2 }),
+  categoryIds: jsonb("category_ids"),
+  productIds: jsonb("product_ids"),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
 export const blogCategories = pgTable("blog_categories", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -323,6 +341,7 @@ export const insertNavigationLinkSchema = createInsertSchema(navigationLinks).om
 export const insertBundleSchema = createInsertSchema(bundles).omit({ id: true, createdAt: true });
 export const insertTestimonialSchema = createInsertSchema(testimonials).omit({ id: true, createdAt: true });
 export const insertPaymentMethodSchema = createInsertSchema(paymentMethods).omit({ id: true });
+export const insertCampaignSchema = createInsertSchema(campaigns).omit({ id: true, createdAt: true });
 export const insertBlogCategorySchema = createInsertSchema(blogCategories).omit({ id: true });
 export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({ id: true, createdAt: true, updatedAt: true, viewCount: true });
 export const insertBlogCommentSchema = createInsertSchema(blogComments).omit({ id: true, createdAt: true });
@@ -369,6 +388,8 @@ export type Testimonial = typeof testimonials.$inferSelect;
 export type InsertTestimonial = z.infer<typeof insertTestimonialSchema>;
 export type PaymentMethod = typeof paymentMethods.$inferSelect;
 export type InsertPaymentMethod = z.infer<typeof insertPaymentMethodSchema>;
+export type Campaign = typeof campaigns.$inferSelect;
+export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type BlogCategory = typeof blogCategories.$inferSelect;
 export type InsertBlogCategory = z.infer<typeof insertBlogCategorySchema>;
 export type BlogPost = typeof blogPosts.$inferSelect;

@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { seedDatabase } from "./seed";
-import { insertBlogCategorySchema, insertBlogPostSchema } from "@shared/schema";
+import { insertBlogCategorySchema, insertBlogPostSchema, insertCampaignSchema } from "@shared/schema";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Iyzipay from "iyzipay";
@@ -249,7 +249,7 @@ export async function registerRoutes(
     res.status(201).json(order);
   });
 
-  app.get("/api/orders", async (req, res) => {
+  app.get("/api/orders", requireAuth, requireRole("super_admin", "admin"), async (req, res) => {
     res.json(await storage.getOrders());
   });
 
@@ -259,7 +259,7 @@ export async function registerRoutes(
     res.json(order);
   });
 
-  app.patch("/api/orders/:id/status", async (req, res) => {
+  app.patch("/api/orders/:id/status", requireAuth, requireRole("super_admin", "admin"), async (req, res) => {
     const order = await storage.updateOrderStatus(Number(req.params.id), req.body.status);
     res.json(order);
   });
@@ -435,6 +435,10 @@ export async function registerRoutes(
     res.json(layout);
   });
 
+  app.get("/api/campaigns", async (_req, res) => {
+    res.json(await storage.getActiveCampaigns());
+  });
+
   app.use("/api/admin", requireAuth, requireRole("super_admin", "admin", "seller", "support", "logistics"));
 
   app.get("/api/admin/stats", async (req, res) => {
@@ -590,6 +594,35 @@ export async function registerRoutes(
     const page = await storage.updatePage(Number(req.params.id), req.body);
     await logAudit(req, "update", "pages", Number(req.params.id));
     res.json(page);
+  });
+
+  app.delete("/api/admin/pages/:id", async (req, res) => {
+    await storage.deletePage(Number(req.params.id));
+    await logAudit(req, "delete", "pages", Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  app.get("/api/admin/campaigns", async (_req, res) => {
+    res.json(await storage.getCampaigns());
+  });
+  app.post("/api/admin/campaigns", async (req, res) => {
+    const parsed = insertCampaignSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Geçersiz kampanya verisi", details: parsed.error.flatten() });
+    const campaign = await storage.createCampaign(parsed.data);
+    await logAudit(req, "create", "campaigns", campaign.id);
+    res.status(201).json(campaign);
+  });
+  app.patch("/api/admin/campaigns/:id", async (req, res) => {
+    const parsed = insertCampaignSchema.partial().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Geçersiz kampanya verisi", details: parsed.error.flatten() });
+    const campaign = await storage.updateCampaign(Number(req.params.id), parsed.data);
+    await logAudit(req, "update", "campaigns", Number(req.params.id));
+    res.json(campaign);
+  });
+  app.delete("/api/admin/campaigns/:id", async (req, res) => {
+    await storage.deleteCampaign(Number(req.params.id));
+    await logAudit(req, "delete", "campaigns", Number(req.params.id));
+    res.json({ success: true });
   });
 
   app.post("/api/settings", requireAuth, requireRole("super_admin", "admin"), async (req, res) => {
@@ -1079,10 +1112,10 @@ export async function registerRoutes(
         url: `${siteUrl}/urun/${product.slug}`,
         priceCurrency: "TRY",
         price: product.price,
-        availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+        availability: (product.stock ?? 0) > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
         seller: { "@type": "Organization", name: siteName },
       },
-      aggregateRating: product.reviewCount > 0 ? {
+      aggregateRating: (product.reviewCount ?? 0) > 0 ? {
         "@type": "AggregateRating",
         ratingValue: product.rating,
         reviewCount: product.reviewCount,
@@ -1267,10 +1300,8 @@ export async function registerRoutes(
     try {
       const post = await storage.getBlogPostBySlug(req.params.slug);
       if (!post) return res.status(404).json({ error: "Post bulunamadı" });
-      const siteUrlSetting = await storage.getSiteSetting("site_url");
-      const siteUrl = siteUrlSetting?.value || "https://example.com";
-      const siteNameSetting = await storage.getSiteSetting("site_name");
-      const siteName = siteNameSetting?.value || "Supplement Store";
+      const siteUrl = (await storage.getSetting("site_url")) || `${req.protocol}://${req.get("host")}`;
+      const siteName = (await storage.getSetting("site_name")) || "FitSupp";
 
       let category = null;
       if (post.categoryId) {

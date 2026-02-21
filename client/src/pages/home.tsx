@@ -8,7 +8,7 @@ import ProductCard from "@/components/product-card";
 import { useSettings } from "@/hooks/use-settings";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Product, Category, Brand, Banner, Coupon, PageLayout, Testimonial } from "@shared/schema";
+import type { Product, Category, Brand, Banner, Coupon, Campaign, PageLayout, Testimonial } from "@shared/schema";
 
 function HeroSlider() {
   const { data: banners = [] } = useQuery<Banner[]>({ queryKey: ["/api/banners?type=hero"] });
@@ -216,9 +216,10 @@ function WizardPromoSection() {
 }
 
 function CampaignsSection() {
+  const { data: campaigns = [] } = useQuery<Campaign[]>({ queryKey: ["/api/campaigns"] });
   const { data: coupons = [] } = useQuery<Coupon[]>({ queryKey: ["/api/coupons/active"] });
 
-  if (!coupons.length) return null;
+  if (!campaigns.length && !coupons.length) return null;
 
   const icons = [Tag, Gift, Percent, ShoppingBag];
 
@@ -230,13 +231,43 @@ function CampaignsSection() {
           <span className="text-sm text-muted-foreground">Fırsatları kaçırma!</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {coupons.slice(0, 4).map((coupon, i) => {
+          {campaigns.slice(0, 4).map((campaign, i) => {
             const Icon = icons[i % icons.length];
             return (
               <div
-                key={coupon.id}
+                key={`campaign-${campaign.id}`}
                 className="p-5 rounded-xl border border-border bg-card hover:border-primary/30 transition-all group"
-                data-testid={`card-campaign-${coupon.id}`}
+                data-testid={`card-campaign-${campaign.id}`}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-sm">
+                    {campaign.discountType === "percentage"
+                      ? `%${campaign.discountValue} İndirim`
+                      : `${campaign.discountValue}₺ İndirim`}
+                  </h3>
+                </div>
+                <p className="text-sm mb-2">{campaign.name}</p>
+                {campaign.description && (
+                  <p className="text-xs text-muted-foreground mb-3">{campaign.description}</p>
+                )}
+                {campaign.minOrderAmount && (
+                  <p className="text-xs text-muted-foreground">
+                    {campaign.minOrderAmount}₺ ve üzeri alışverişlerde
+                  </p>
+                )}
+              </div>
+            );
+          })}
+          {coupons.slice(0, Math.max(0, 4 - campaigns.length)).map((coupon, i) => {
+            const Icon = icons[(campaigns.length + i) % icons.length];
+            return (
+              <div
+                key={`coupon-${coupon.id}`}
+                className="p-5 rounded-xl border border-border bg-card hover:border-primary/30 transition-all group"
+                data-testid={`card-coupon-${coupon.id}`}
               >
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">

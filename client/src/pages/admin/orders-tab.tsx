@@ -91,19 +91,24 @@ export default function OrdersTab() {
                 <p className="text-sm"><span className="text-muted-foreground">Tarih:</span> {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString("tr-TR") : "-"}</p>
               </div>
             </div>
-            {selectedOrder.items && (
-              <div className="mt-4">
-                <p className="text-sm font-medium mb-2">Urunler:</p>
-                <div className="space-y-1">
-                  {(Array.isArray(selectedOrder.items) ? (selectedOrder.items as any[]) : typeof selectedOrder.items === "string" ? JSON.parse(selectedOrder.items as string) : []).map((item: any, i: number) => (
-                    <div key={i} className="flex justify-between text-sm p-2 bg-muted/50 rounded">
-                      <span>{item.name || item.productName || `Urun #${item.productId}`} x{item.quantity}</span>
-                      <span className="font-medium">{formatPrice(item.price || item.total || 0)}</span>
-                    </div>
-                  ))}
+            {(() => {
+              const rawItems = selectedOrder.items;
+              const items: any[] = Array.isArray(rawItems) ? rawItems : (typeof rawItems === "string" ? (() => { try { return JSON.parse(rawItems); } catch { return []; } })() : []);
+              if (items.length === 0) return null;
+              return (
+                <div className="mt-4">
+                  <p className="text-sm font-medium mb-2">Ürünler:</p>
+                  <div className="space-y-1">
+                    {items.map((item: any, i: number) => (
+                      <div key={i} className="flex justify-between text-sm p-2 bg-muted/50 rounded">
+                        <span>{item.name || item.productName || `Ürün #${item.productId}`}{item.flavor ? ` (${item.flavor})` : ""}{item.weight ? ` - ${item.weight}` : ""} x{item.quantity}</span>
+                        <span className="font-medium">{formatPrice((item.price || 0) * (item.quantity || 1))}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
             <div className="flex items-center gap-3 mt-4 flex-wrap">
               <Select value={newStatus} onValueChange={setNewStatus}>
                 <SelectTrigger className="w-48" data-testid="select-order-new-status">

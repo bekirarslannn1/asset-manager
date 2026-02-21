@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Save, X } from "lucide-react";
+import { Plus, Edit, Save, X, Trash2 } from "lucide-react";
 import type { Page } from "@shared/schema";
 
 export default function PagesTab() {
@@ -33,6 +33,14 @@ export default function PagesTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/pages"] });
       setEditing(null);
       toast({ title: "Sayfa guncellendi" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/pages/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pages"] });
+      toast({ title: "Sayfa silindi" });
     },
   });
 
@@ -81,9 +89,14 @@ export default function PagesTab() {
                     <Button size="sm" variant="ghost" onClick={() => setEditing(null)}><X className="w-4 h-4" /></Button>
                   </div>
                 ) : (
-                  <Button size="sm" variant="outline" onClick={() => { setEditing(page.id); setEditContent(page.content || ""); }} data-testid={`button-edit-page-${page.id}`}>
-                    <Edit className="w-4 h-4 mr-1" /> Duzenle
-                  </Button>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button size="sm" variant="outline" onClick={() => { setEditing(page.id); setEditContent(page.content || ""); }} data-testid={`button-edit-page-${page.id}`}>
+                      <Edit className="w-4 h-4 mr-1" /> Düzenle
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => { if (confirm("Bu sayfayı silmek istediğinize emin misiniz?")) deleteMutation.mutate(page.id); }} data-testid={`button-delete-page-${page.id}`}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 )}
               </div>
               {editing === page.id && (

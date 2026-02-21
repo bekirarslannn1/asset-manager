@@ -51,7 +51,7 @@ export default function BannersTab() {
   const startEdit = (b: Banner) => {
     setEditingId(b.id);
     setShowForm(true);
-    setForm({ title: b.title, subtitle: b.subtitle || "", image: b.image, link: b.link || "", type: b.type || "hero", sortOrder: String(b.sortOrder || 0) });
+    setForm({ title: b.title, subtitle: b.subtitle || "", image: b.image || "", link: b.link || "", type: b.type || "hero", sortOrder: String(b.sortOrder || 0) });
   };
 
   const handleSave = () => {
