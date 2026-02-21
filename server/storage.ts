@@ -18,7 +18,8 @@ import {
   type PageLayout, type InsertPageLayout,
   type NavigationLink, type InsertNavigationLink,
   type Testimonial, type InsertTestimonial,
-  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, testimonials,
+  type PaymentMethod, type InsertPaymentMethod,
+  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, testimonials, paymentMethods,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, desc, asc, gte, lte, sql, count, sum } from "drizzle-orm";
@@ -467,6 +468,24 @@ export class DatabaseStorage {
   }
   async deleteTestimonial(id: number): Promise<void> {
     await db.delete(testimonials).where(eq(testimonials.id, id));
+  }
+
+  async getPaymentMethods(): Promise<PaymentMethod[]> {
+    return db.select().from(paymentMethods).where(eq(paymentMethods.isActive, true)).orderBy(asc(paymentMethods.sortOrder));
+  }
+  async getAllPaymentMethods(): Promise<PaymentMethod[]> {
+    return db.select().from(paymentMethods).orderBy(asc(paymentMethods.sortOrder));
+  }
+  async createPaymentMethod(data: InsertPaymentMethod): Promise<PaymentMethod> {
+    const [created] = await db.insert(paymentMethods).values(data).returning();
+    return created;
+  }
+  async updatePaymentMethod(id: number, data: Partial<InsertPaymentMethod>): Promise<PaymentMethod | undefined> {
+    const [updated] = await db.update(paymentMethods).set(data).where(eq(paymentMethods.id, id)).returning();
+    return updated;
+  }
+  async deletePaymentMethod(id: number): Promise<void> {
+    await db.delete(paymentMethods).where(eq(paymentMethods.id, id));
   }
 
   async anonymizeUser(userId: number): Promise<void> {

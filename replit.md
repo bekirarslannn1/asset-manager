@@ -4,13 +4,14 @@
 A professional, enterprise-grade protein and supplement e-commerce platform for the Turkish market with a dark theme (#0a0a0a, #1a1a1a) and neon green accents (#39FF14). All content is 100% dynamic and manageable through admin panel. Features JWT auth, RBAC, audit logging, KVKK compliance, dynamic theme engine, SDUI page builder, and dynamic navigation.
 
 ## Recent Changes
-- 2026-02-21: Admin panel modularized into 18 separate tab components in client/src/pages/admin/
-- 2026-02-21: Dynamic theme engine - CSS variables applied from DB settings in real-time
-- 2026-02-21: Dynamic header/footer navigation - renders links from navigation_links DB table
-- 2026-02-21: SDUI homepage renderer - homepage sections rendered from DB layout blocks with fallback
-- 2026-02-21: Added backend routes for navigation CRUD, reviews admin, coupons CRUD, KPI analytics
-- 2026-02-21: Payment integration - iyzico payment gateway with server-side price validation
-- 2026-02-21: Security hardening - JWT requires SESSION_SECRET, admin routes auth-gated
+- 2026-02-21: Multiple payment methods - credit card (iyzico), bank transfer (havale/EFT), WhatsApp order
+- 2026-02-21: Admin "Ödeme Yöntemleri" tab - manage bank accounts, WhatsApp number/template
+- 2026-02-21: Checkout page redesigned with 3 payment options and order creation for each
+- 2026-02-21: Orders schema updated with customerName, customerEmail, customerPhone, customerNote fields
+- 2026-02-21: payment_methods table added (type, name, description, details jsonb, isActive, sortOrder)
+- 2026-02-21: Testimonials system with admin tab, public display, CRUD API
+- 2026-02-21: Admin panel modularized into 20 separate tab components in client/src/pages/admin/
+- 2026-02-21: Dynamic theme engine, navigation, SDUI, payment integration (iyzico)
 - 2026-02-21: Enterprise expansion - Product variants/SKU, RBAC, JWT auth, audit logging, KVKK consent
 
 ## User Preferences
@@ -29,12 +30,13 @@ A professional, enterprise-grade protein and supplement e-commerce platform for 
 - **Database**: PostgreSQL via Drizzle ORM
 - **State Management**: TanStack React Query
 
-### Database Schema (18 tables)
+### Database Schema (20 tables)
 - users (with roles: super_admin, admin, seller, support, logistics, customer)
 - categories, brands, products, productVariants, reviews
-- cartItems, orders, banners, siteSettings
+- cartItems, orders (with customerName/Email/Phone), banners, siteSettings
 - coupons, favorites, newsletters, pages
 - auditLogs, consentRecords, pageLayouts, navigationLinks
+- testimonials, paymentMethods (type: credit_card/bank_transfer/whatsapp)
 
 ### Authentication & Authorization
 - JWT tokens with 7-day expiration

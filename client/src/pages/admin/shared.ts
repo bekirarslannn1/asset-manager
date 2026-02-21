@@ -20,6 +20,13 @@ export const STATUS_LABELS: Record<string, string> = {
   refunded: "İade Edildi",
 };
 
+export const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  credit_card: "Kredi Kartı",
+  bank_transfer: "Havale/EFT",
+  whatsapp: "WhatsApp Sipariş",
+  iyzico: "Kredi Kartı (iyzico)",
+};
+
 export const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-500/20 text-yellow-400",
   confirmed: "bg-blue-500/20 text-blue-400",

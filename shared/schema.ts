@@ -115,11 +115,25 @@ export const orders = pgTable("orders", {
   discount: decimal("discount", { precision: 10, scale: 2 }).default("0"),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   shippingAddress: jsonb("shipping_address"),
+  customerName: text("customer_name"),
+  customerEmail: text("customer_email"),
+  customerPhone: text("customer_phone"),
   couponCode: text("coupon_code"),
   paymentMethod: text("payment_method"),
   paymentStatus: text("payment_status").default("pending"),
   paymentId: text("payment_id"),
+  customerNote: text("customer_note"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const paymentMethods = pgTable("payment_methods", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  details: jsonb("details"),
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0),
 });
 
 export const banners = pgTable("banners", {
@@ -249,6 +263,7 @@ export const insertConsentRecordSchema = createInsertSchema(consentRecords).omit
 export const insertPageLayoutSchema = createInsertSchema(pageLayouts).omit({ id: true, createdAt: true });
 export const insertNavigationLinkSchema = createInsertSchema(navigationLinks).omit({ id: true, createdAt: true });
 export const insertTestimonialSchema = createInsertSchema(testimonials).omit({ id: true, createdAt: true });
+export const insertPaymentMethodSchema = createInsertSchema(paymentMethods).omit({ id: true });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -288,3 +303,5 @@ export type NavigationLink = typeof navigationLinks.$inferSelect;
 export type InsertNavigationLink = z.infer<typeof insertNavigationLinkSchema>;
 export type Testimonial = typeof testimonials.$inferSelect;
 export type InsertTestimonial = z.infer<typeof insertTestimonialSchema>;
+export type PaymentMethod = typeof paymentMethods.$inferSelect;
+export type InsertPaymentMethod = z.infer<typeof insertPaymentMethodSchema>;

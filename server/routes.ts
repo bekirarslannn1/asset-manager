@@ -321,6 +321,10 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/payment-methods", async (req, res) => {
+    res.json(await storage.getPaymentMethods());
+  });
+
   app.get("/api/testimonials", async (req, res) => {
     res.json(await storage.getTestimonials());
   });
@@ -633,6 +637,26 @@ export async function registerRoutes(
   app.delete("/api/admin/testimonials/:id", async (req, res) => {
     await storage.deleteTestimonial(Number(req.params.id));
     await logAudit(req, "delete", "testimonial", Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  // Payment methods admin
+  app.get("/api/admin/payment-methods", async (req, res) => {
+    res.json(await storage.getAllPaymentMethods());
+  });
+  app.post("/api/admin/payment-methods", async (req, res) => {
+    const method = await storage.createPaymentMethod(req.body);
+    await logAudit(req, "create", "payment_method", method.id);
+    res.json(method);
+  });
+  app.patch("/api/admin/payment-methods/:id", async (req, res) => {
+    const updated = await storage.updatePaymentMethod(Number(req.params.id), req.body);
+    await logAudit(req, "update", "payment_method", Number(req.params.id));
+    res.json(updated);
+  });
+  app.delete("/api/admin/payment-methods/:id", async (req, res) => {
+    await storage.deletePaymentMethod(Number(req.params.id));
+    await logAudit(req, "delete", "payment_method", Number(req.params.id));
     res.json({ success: true });
   });
 

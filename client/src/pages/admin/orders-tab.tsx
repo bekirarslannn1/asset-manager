@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { formatPrice } from "@/lib/utils";
 import { Eye, X, Save, Package, Truck, CheckCircle, XCircle, Clock } from "lucide-react";
-import { STATUS_LABELS, STATUS_COLORS } from "./shared";
+import { STATUS_LABELS, STATUS_COLORS, PAYMENT_METHOD_LABELS } from "./shared";
 import type { Order } from "@shared/schema";
 
 export default function OrdersTab() {
@@ -78,12 +78,12 @@ export default function OrdersTab() {
                 <p className="text-sm"><span className="text-muted-foreground">Musteri:</span> {selectedOrder.customerName}</p>
                 <p className="text-sm"><span className="text-muted-foreground">E-posta:</span> {selectedOrder.customerEmail}</p>
                 <p className="text-sm"><span className="text-muted-foreground">Telefon:</span> {selectedOrder.customerPhone || "-"}</p>
-                <p className="text-sm"><span className="text-muted-foreground">Adres:</span> {selectedOrder.shippingAddress}</p>
-                <p className="text-sm"><span className="text-muted-foreground">Odeme:</span> {selectedOrder.paymentMethod}</p>
+                <p className="text-sm"><span className="text-muted-foreground">Adres:</span> {(() => { const a = selectedOrder.shippingAddress as any; return a ? (typeof a === "string" ? a : `${a.address || ""}, ${a.district || ""}/${a.city || ""}`) : "-"; })()}</p>
+                <p className="text-sm"><span className="text-muted-foreground">Odeme:</span> {PAYMENT_METHOD_LABELS[selectedOrder.paymentMethod || ""] || selectedOrder.paymentMethod || "-"}</p>
               </div>
               <div className="space-y-2">
                 <p className="text-sm"><span className="text-muted-foreground">Ara Toplam:</span> {formatPrice(selectedOrder.subtotal)}</p>
-                <p className="text-sm"><span className="text-muted-foreground">Kargo:</span> {formatPrice(selectedOrder.shippingCost)}</p>
+                <p className="text-sm"><span className="text-muted-foreground">Kargo:</span> {formatPrice(selectedOrder.shippingCost || "0")}</p>
                 {selectedOrder.discount && parseFloat(selectedOrder.discount) > 0 && (
                   <p className="text-sm"><span className="text-muted-foreground">Indirim:</span> -{formatPrice(selectedOrder.discount)}</p>
                 )}
@@ -95,7 +95,7 @@ export default function OrdersTab() {
               <div className="mt-4">
                 <p className="text-sm font-medium mb-2">Urunler:</p>
                 <div className="space-y-1">
-                  {(typeof selectedOrder.items === "string" ? JSON.parse(selectedOrder.items) : selectedOrder.items).map((item: any, i: number) => (
+                  {(Array.isArray(selectedOrder.items) ? (selectedOrder.items as any[]) : typeof selectedOrder.items === "string" ? JSON.parse(selectedOrder.items as string) : []).map((item: any, i: number) => (
                     <div key={i} className="flex justify-between text-sm p-2 bg-muted/50 rounded">
                       <span>{item.name || item.productName || `Urun #${item.productId}`} x{item.quantity}</span>
                       <span className="font-medium">{formatPrice(item.price || item.total || 0)}</span>
