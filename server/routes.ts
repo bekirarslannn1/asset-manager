@@ -321,6 +321,10 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/testimonials", async (req, res) => {
+    res.json(await storage.getTestimonials());
+  });
+
   app.get("/api/layouts", async (req, res) => {
     res.json(await storage.getPageLayouts());
   });
@@ -609,6 +613,26 @@ export async function registerRoutes(
   app.delete("/api/admin/navigation/:id", async (req, res) => {
     await storage.deleteNavigationLink(Number(req.params.id));
     await logAudit(req, "delete", "navigation", Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  // Testimonials admin
+  app.get("/api/admin/testimonials", async (req, res) => {
+    res.json(await storage.getAllTestimonials());
+  });
+  app.post("/api/admin/testimonials", async (req, res) => {
+    const testimonial = await storage.createTestimonial(req.body);
+    await logAudit(req, "create", "testimonial", testimonial.id);
+    res.json(testimonial);
+  });
+  app.patch("/api/admin/testimonials/:id", async (req, res) => {
+    const updated = await storage.updateTestimonial(Number(req.params.id), req.body);
+    await logAudit(req, "update", "testimonial", Number(req.params.id));
+    res.json(updated);
+  });
+  app.delete("/api/admin/testimonials/:id", async (req, res) => {
+    await storage.deleteTestimonial(Number(req.params.id));
+    await logAudit(req, "delete", "testimonial", Number(req.params.id));
     res.json({ success: true });
   });
 

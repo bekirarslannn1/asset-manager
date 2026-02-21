@@ -3,12 +3,12 @@ import { Link } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, ArrowRight, Send, Sparkles, Tag, Gift, Percent, ShoppingBag, Target, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight, Send, Sparkles, Tag, Gift, Percent, ShoppingBag, Target, Search, Star, Quote } from "lucide-react";
 import ProductCard from "@/components/product-card";
 import { useSettings } from "@/hooks/use-settings";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Product, Category, Brand, Banner, Coupon, PageLayout } from "@shared/schema";
+import type { Product, Category, Brand, Banner, Coupon, PageLayout, Testimonial } from "@shared/schema";
 
 function HeroSlider() {
   const { data: banners = [] } = useQuery<Banner[]>({ queryKey: ["/api/banners?type=hero"] });
@@ -126,17 +126,16 @@ function ProductSection({ title, queryKey, linkHref }: { title: string; queryKey
 
   if (isLoading) {
     return (
-      <section className="py-12">
+      <section className="py-8">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-2xl font-bold font-heading mb-8">{title}</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="bg-card rounded-xl border border-border animate-pulse">
-                <div className="aspect-square bg-muted rounded-t-xl" />
-                <div className="p-4 space-y-3">
-                  <div className="h-4 bg-muted rounded w-3/4" />
-                  <div className="h-3 bg-muted rounded w-1/2" />
-                  <div className="h-6 bg-muted rounded w-1/3" />
+          <h2 className="text-xl font-bold font-heading mb-6">{title}</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-card rounded-lg border border-border animate-pulse">
+                <div className="aspect-[4/3] bg-muted rounded-t-lg" />
+                <div className="p-2.5 space-y-2">
+                  <div className="h-3 bg-muted rounded w-3/4" />
+                  <div className="h-4 bg-muted rounded w-1/2" />
                 </div>
               </div>
             ))}
@@ -149,18 +148,18 @@ function ProductSection({ title, queryKey, linkHref }: { title: string; queryKey
   if (!products.length) return null;
 
   return (
-    <section className="py-12" data-testid={`section-${title.toLowerCase().replace(/\s/g, "-")}`}>
+    <section className="py-8" data-testid={`section-${title.toLowerCase().replace(/\s/g, "-")}`}>
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-bold font-heading">{title}</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold font-heading">{title}</h2>
           <Link href={linkHref}>
             <span className="text-sm text-primary hover:underline flex items-center gap-1 cursor-pointer">
               Tümünü Gör <ArrowRight className="w-4 h-4" />
             </span>
           </Link>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {products.slice(0, 8).map((product) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+          {products.slice(0, 12).map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
@@ -368,6 +367,49 @@ function NewsletterSection() {
   );
 }
 
+function TestimonialsSection() {
+  const { data: testimonials = [] } = useQuery<Testimonial[]>({ queryKey: ["/api/testimonials"] });
+
+  if (!testimonials.length) return null;
+
+  return (
+    <section className="py-12" data-testid="testimonials-section">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold font-heading">Müşteri Yorumları</h2>
+          <p className="text-sm text-muted-foreground mt-1">Müşterilerimiz ne diyor?</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {testimonials.slice(0, 6).map((t) => (
+            <div key={t.id} className="p-5 rounded-xl border border-border bg-card" data-testid={`card-testimonial-${t.id}`}>
+              <div className="flex items-center gap-1 mb-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star key={i} className={`w-3.5 h-3.5 ${i < t.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`} />
+                ))}
+              </div>
+              <Quote className="w-5 h-5 text-primary/30 mb-2" />
+              <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{t.comment}</p>
+              <div className="flex items-center gap-3 pt-3 border-t border-border">
+                {t.photo ? (
+                  <img src={t.photo} alt={t.name} className="w-10 h-10 rounded-full object-cover" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                    {t.name.charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm font-medium">{t.name}</p>
+                  {t.title && <p className="text-xs text-muted-foreground">{t.title}</p>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 const SECTION_MAP: Record<string, () => JSX.Element | null> = {
   hero_slider: () => <HeroSlider />,
   categories_grid: () => <CategoryShowcase />,
@@ -378,6 +420,7 @@ const SECTION_MAP: Record<string, () => JSX.Element | null> = {
   newsletter: () => <NewsletterSection />,
   wizard_promo: () => <WizardPromoSection />,
   campaigns: () => <CampaignsSection />,
+  testimonials: () => <TestimonialsSection />,
   banner_strip: () => <HeroSlider />,
   advantages_bar: () => null,
 };
@@ -410,6 +453,7 @@ function DefaultHomepage() {
       <CampaignsSection />
       <BrandShowcase />
       <ProductSection title="Öne Çıkan Ürünler" queryKey="/api/products/featured" linkHref="/urunler?featured=true" />
+      <TestimonialsSection />
       <NewsletterSection />
     </>
   );

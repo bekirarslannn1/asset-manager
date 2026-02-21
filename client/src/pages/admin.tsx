@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BarChart3, Package, Layers, Users, Shield, Settings, Palette, LayoutGrid, FileText,
   Image, ScrollText, Lock, LogOut, Boxes, Loader2, Tag, ShoppingCart, Star, Ticket,
-  Navigation, Mail,
+  Navigation, Mail, MessageSquareQuote,
 } from "lucide-react";
 import { ROLE_COLORS } from "./admin/shared";
 
@@ -33,6 +33,7 @@ import SDUITab from "./admin/sdui-tab";
 import KVKKTab from "./admin/kvkk-tab";
 import PagesTab from "./admin/pages-tab";
 import SettingsTab from "./admin/settings-tab";
+import TestimonialsTab from "./admin/testimonials-tab";
 
 function AdminLoginGate({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("admin_token"));
@@ -186,6 +187,7 @@ export default function AdminPage() {
             <TabsTrigger value="categories" className="gap-1.5" data-testid="tab-categories"><Layers className="w-3.5 h-3.5" /> Kategoriler</TabsTrigger>
             <TabsTrigger value="orders" className="gap-1.5" data-testid="tab-orders"><ShoppingCart className="w-3.5 h-3.5" /> Siparisler</TabsTrigger>
             <TabsTrigger value="reviews" className="gap-1.5" data-testid="tab-reviews"><Star className="w-3.5 h-3.5" /> Yorumlar</TabsTrigger>
+            <TabsTrigger value="testimonials" className="gap-1.5" data-testid="tab-testimonials"><MessageSquareQuote className="w-3.5 h-3.5" /> Testinya</TabsTrigger>
             <TabsTrigger value="coupons" className="gap-1.5" data-testid="tab-coupons"><Ticket className="w-3.5 h-3.5" /> Kuponlar</TabsTrigger>
             <TabsTrigger value="brands" className="gap-1.5" data-testid="tab-brands"><Tag className="w-3.5 h-3.5" /> Markalar</TabsTrigger>
             <TabsTrigger value="banners" className="gap-1.5" data-testid="tab-banners"><Image className="w-3.5 h-3.5" /> Bannerlar</TabsTrigger>
@@ -206,6 +208,7 @@ export default function AdminPage() {
           <TabsContent value="categories"><CategoriesTab /></TabsContent>
           <TabsContent value="orders"><OrdersTab /></TabsContent>
           <TabsContent value="reviews"><ReviewsTab /></TabsContent>
+          <TabsContent value="testimonials"><TestimonialsTab /></TabsContent>
           <TabsContent value="coupons"><CouponsTab /></TabsContent>
           <TabsContent value="brands"><BrandsTab /></TabsContent>
           <TabsContent value="banners"><BannersTab /></TabsContent>

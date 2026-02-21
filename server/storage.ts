@@ -17,7 +17,8 @@ import {
   type ConsentRecord, type InsertConsentRecord,
   type PageLayout, type InsertPageLayout,
   type NavigationLink, type InsertNavigationLink,
-  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks,
+  type Testimonial, type InsertTestimonial,
+  users, categories, brands, products, productVariants, reviews, cartItems, orders, banners, siteSettings, coupons, favorites, newsletters, pages, auditLogs, consentRecords, pageLayouts, navigationLinks, testimonials,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, desc, asc, gte, lte, sql, count, sum } from "drizzle-orm";
@@ -448,6 +449,24 @@ export class DatabaseStorage {
   }
   async deletePageLayout(id: number): Promise<void> {
     await db.delete(pageLayouts).where(eq(pageLayouts.id, id));
+  }
+
+  async getTestimonials(): Promise<Testimonial[]> {
+    return db.select().from(testimonials).where(eq(testimonials.isActive, true)).orderBy(asc(testimonials.sortOrder));
+  }
+  async getAllTestimonials(): Promise<Testimonial[]> {
+    return db.select().from(testimonials).orderBy(asc(testimonials.sortOrder));
+  }
+  async createTestimonial(data: InsertTestimonial): Promise<Testimonial> {
+    const [created] = await db.insert(testimonials).values(data).returning();
+    return created;
+  }
+  async updateTestimonial(id: number, data: Partial<InsertTestimonial>): Promise<Testimonial | undefined> {
+    const [updated] = await db.update(testimonials).set(data).where(eq(testimonials.id, id)).returning();
+    return updated;
+  }
+  async deleteTestimonial(id: number): Promise<void> {
+    await db.delete(testimonials).where(eq(testimonials.id, id));
   }
 
   async anonymizeUser(userId: number): Promise<void> {

@@ -218,6 +218,18 @@ export const navigationLinks = pgTable("navigation_links", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+export const testimonials = pgTable("testimonials", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  title: text("title"),
+  comment: text("comment").notNull(),
+  photo: text("photo"),
+  rating: integer("rating").notNull().default(5),
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, lastLoginAt: true });
 export const insertCategorySchema = createInsertSchema(categories).omit({ id: true });
 export const insertBrandSchema = createInsertSchema(brands).omit({ id: true });
@@ -236,6 +248,7 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: tru
 export const insertConsentRecordSchema = createInsertSchema(consentRecords).omit({ id: true, createdAt: true });
 export const insertPageLayoutSchema = createInsertSchema(pageLayouts).omit({ id: true, createdAt: true });
 export const insertNavigationLinkSchema = createInsertSchema(navigationLinks).omit({ id: true, createdAt: true });
+export const insertTestimonialSchema = createInsertSchema(testimonials).omit({ id: true, createdAt: true });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -273,3 +286,5 @@ export type PageLayout = typeof pageLayouts.$inferSelect;
 export type InsertPageLayout = z.infer<typeof insertPageLayoutSchema>;
 export type NavigationLink = typeof navigationLinks.$inferSelect;
 export type InsertNavigationLink = z.infer<typeof insertNavigationLinkSchema>;
+export type Testimonial = typeof testimonials.$inferSelect;
+export type InsertTestimonial = z.infer<typeof insertTestimonialSchema>;
